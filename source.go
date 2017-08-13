@@ -283,7 +283,15 @@ func (r *Rainbow) Render(pixels Frame, timeMS uint32) {
 }
 
 func (r *Rainbow) String() string {
-	return rainbowKey
+	return "Rainbow"
+}
+
+// FromString converts a "Rainbow" encoded string to a w.
+func (r *Rainbow) FromString(s string) error {
+	if s != "Rainbow" {
+		return errors.New("invalid rainbow string")
+	}
+	return nil
 }
 
 // waveLengthToRGB returns a color over a rainbow.

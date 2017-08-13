@@ -26,7 +26,8 @@ func TestRotate(t *testing.T) {
 	a := Color{10, 10, 10}
 	b := Color{20, 20, 20}
 	c := Color{30, 30, 30}
-	p := &Rotate{Child: SPattern{Frame{a, b, c}}, MovePerHour: MovePerHour{Const(360000)}}
+	co := Const(360000)
+	p := &Rotate{Child: SPattern{Frame{a, b, c}}, MovePerHour: MovePerHour{&co}}
 	e := []expectation{
 		{0, Frame{a, b, c}},
 		{5, Frame{a, b, c}},
@@ -45,7 +46,8 @@ func TestRotateRev(t *testing.T) {
 	a := Color{10, 10, 10}
 	b := Color{20, 20, 20}
 	c := Color{30, 30, 30}
-	p := &Rotate{Child: SPattern{Frame{a, b, c}}, MovePerHour: MovePerHour{Const(-360000)}}
+	co := Const(-360000)
+	p := &Rotate{Child: SPattern{Frame{a, b, c}}, MovePerHour: MovePerHour{&co}}
 	e := []expectation{
 		{0, Frame{a, b, c}},
 		{5, Frame{a, b, c}},
@@ -83,8 +85,8 @@ func TestPingPong(t *testing.T) {
 	d := Color{0x40, 0x40, 0x40}
 	e := Color{0x50, 0x50, 0x50}
 	f := Color{0x60, 0x60, 0x60}
-
-	p := &PingPong{Child: SPattern{Frame{a, b}}, MovePerHour: MovePerHour{Const(360000)}}
+	co := Const(360000)
+	p := &PingPong{Child: SPattern{Frame{a, b}}, MovePerHour: MovePerHour{&co}}
 	exp := []expectation{
 		{0, Frame{a, b, {}}},
 		{5, Frame{a, b, {}}},
@@ -97,7 +99,8 @@ func TestPingPong(t *testing.T) {
 	}
 	testFrames(t, p, exp)
 
-	p = &PingPong{Child: SPattern{Frame{a, b, c, d, e, f}}, MovePerHour: MovePerHour{Const(3600)}}
+	co = Const(3600)
+	p = &PingPong{Child: SPattern{Frame{a, b, c, d, e, f}}, MovePerHour: MovePerHour{&co}}
 	exp = []expectation{
 		{0, Frame{a, b, c, d}},
 		{500, Frame{a, b, c, d}},
@@ -118,7 +121,9 @@ func TestCrop(t *testing.T) {
 		{0x20, 0x20, 0x20},
 		{0x30, 0x30, 0x30},
 	}
-	p := &Crop{Child: SPattern{f}, Before: SValue{Const(1)}, After: SValue{Const(2)}}
+	co1 := Const(1)
+	co2 := Const(2)
+	p := &Crop{Child: SPattern{f}, Before: SValue{&co1}, After: SValue{&co2}}
 	testFrame(t, p, expectation{0, f[1:3]})
 }
 
@@ -129,8 +134,10 @@ func TestSubset(t *testing.T) {
 		{0x20, 0x20, 0x20},
 		{0x30, 0x30, 0x30},
 	}
-	p := &Subset{Child: SPattern{f}, Offset: SValue{Const(1)}, Length: SValue{Const(2)}}
-	// Skip the beginning and the end of the destination.
+	co1 := Const(1)
+	co2 := Const(2)
+	p := &Subset{Child: SPattern{f}, Offset: SValue{&co1}, Length: SValue{&co2}}
+	// Skip the begining and the end of the destination.
 	expected := Frame{
 		{},
 		{0x10, 0x10, 0x10},
@@ -141,7 +148,8 @@ func TestSubset(t *testing.T) {
 }
 
 func TestDim(t *testing.T) {
-	p := &Dim{Child: SPattern{&Color{0x60, 0x60, 0x60}}, Intensity: SValue{Const(127)}}
+	co := Const(127)
+	p := &Dim{Child: SPattern{&Color{0x60, 0x60, 0x60}}, Intensity: SValue{&co}}
 	testFrame(t, p, expectation{0, Frame{{0x2f, 0x2f, 0x2f}}})
 }
 
@@ -154,7 +162,8 @@ func TestAdd(t *testing.T) {
 
 func TestScale(t *testing.T) {
 	f := Frame{{0x60, 0x60, 0x60}, {0x10, 0x20, 0x30}}
-	p := &Scale{Child: SPattern{f}, Interpolation: NearestSkip, RatioMilli: SValue{Const(667)}}
+	co := Const(667)
+	p := &Scale{Child: SPattern{f}, Interpolation: NearestSkip, RatioMilli: SValue{&co}}
 	expected := Frame{{0x60, 0x60, 0x60}, {}, {0x10, 0x20, 0x30}}
 	testFrame(t, p, expectation{0, expected})
 }

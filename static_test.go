@@ -134,7 +134,7 @@ func TestRainbow(t *testing.T) {
 	if !f.isEqual(expected) {
 		t.Fatalf("%s != %s", marshalPattern(f), marshalPattern(expected))
 	}
-	if r.String() != rainbowKey {
+	if r.String() != "Rainbow" {
 		t.Fail()
 	}
 }

@@ -14,8 +14,6 @@ import (
 	"time"
 )
 
-const rainbowKey = "Rainbow"
-
 // patternsLookup lists all known patterns that can be instantiated.
 var patternsLookup map[string]reflect.Type
 
@@ -52,8 +50,6 @@ func init() {
 	}
 }
 
-// SPattern
-
 // SPattern is a Pattern that can be serialized.
 //
 // It is only meant to be used in mixers.
@@ -73,14 +69,16 @@ func (s *SPattern) Render(pixels Frame, timeMS uint32) {
 //
 // It knows how to decode Color, Frame or other arbitrary Pattern.
 //
-// If unmarshalling fails, 's' is not touched.
-func (s *SPattern) UnmarshalJSON(b []byte) error {
+// If unmarshalling fails, 'p' is not touched.
+func (p *SPattern) UnmarshalJSON(b []byte) error {
 	// Try to decode first as a string, then as a dict. Not super efficient but
 	// it works.
-	if p2, err := parsePatternString(b); err != nil {
-		return err
-	} else if p2 != nil {
-		s.Pattern = p2
+	if s, err := jsonUnmarshalString(b); err == nil {
+		p2, err := parsePatternString(s)
+		if err != nil {
+			return err
+		}
+		p.Pattern = p2
 		return nil
 	}
 	o, err := jsonUnmarshalWithType(b, patternsLookup, nil)
@@ -88,9 +86,9 @@ func (s *SPattern) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	if o == nil {
-		s.Pattern = nil
+		p.Pattern = nil
 	} else {
-		s.Pattern = o.(Pattern)
+		p.Pattern = o.(Pattern)
 	}
 	return nil
 }
@@ -133,23 +131,21 @@ func (r *Rainbow) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	if s != rainbowKey {
-		return errors.New("invalid color string")
-	}
-	return err
+	return r.FromString(s)
 }
 
 // MarshalJSON encodes the rainbow as a string "Rainbow".
 func (r *Rainbow) MarshalJSON() ([]byte, error) {
-	return json.Marshal(rainbowKey)
+	return json.Marshal(r.String())
 }
 
 // MarshalJSON includes the additional key "_type" to help with unmarshalling.
-func (s *SPattern) MarshalJSON() ([]byte, error) {
-	if s.Pattern == nil {
+func (p *SPattern) MarshalJSON() ([]byte, error) {
+	if p.Pattern == nil {
+		// nil value.
 		return []byte("{}"), nil
 	}
-	return jsonMarshalWithType(s.Pattern)
+	return jsonMarshalWithType(p.Pattern)
 }
 
 // LoadPNG loads a PNG file and creates a Loop out of the lines.
@@ -194,31 +190,26 @@ func LoadPNG(content []byte, frameDuration time.Duration, vertical bool) *Loop {
 
 //
 
-// parsePatternString returns a Pattern object out of the serialized JSON
-// string.
-func parsePatternString(b []byte) (Pattern, error) {
-	s, err := jsonUnmarshalString(b)
-	if err != nil {
-		return nil, nil
-	}
+// parsePatternString returns a Pattern object out of the string.
+func parsePatternString(s string) (Pattern, error) {
 	// Could try to do one after the other? It's kind of a hack at the moment.
 	if len(s) != 0 {
+		if t, ok := patternsLookup[s]; ok {
+			p, ok := reflect.New(t).Interface().(Pattern)
+			if !ok {
+				return nil, errors.New("invalid item")
+			}
+			return p, nil
+		}
 		switch s[0] {
 		case '#':
 			// "#RRGGBB"
 			c := &Color{}
-			err := json.Unmarshal(b, c)
-			return c, err
+			return c, c.FromString(s)
 		case 'L':
 			// "LRRGGBBRRGGBB..."
 			var f Frame
-			err := json.Unmarshal(b, &f)
-			return f, err
-		case rainbowKey[0]:
-			// "Rainbow"
-			r := &Rainbow{}
-			err := json.Unmarshal(b, r)
-			return r, err
+			return f, f.FromString(s)
 		}
 	}
 	return nil, errors.New("unrecognized pattern string, should start with '#', 'L' or be a known constant")

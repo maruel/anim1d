@@ -7,7 +7,11 @@
 package anim1d
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
+	"strconv"
+	"strings"
 
 	"github.com/maruel/fastbezier"
 )
@@ -38,55 +42,274 @@ func MinMax32(v, min, max int32) int32 {
 
 // Value defines a value that may be constant or that may evolve over time.
 type Value interface {
+	fmt.Stringer
 	Eval(timeMS uint32, l int) int32
+	FromString(s string) error
+}
+
+// TimeMS is the time in miilisecond.
+type TimeMS struct{}
+
+func (t *TimeMS) Eval(timeMS uint32, l int) int32 {
+	return int32(timeMS)
+}
+
+func (t *TimeMS) String() string {
+	return "t"
+}
+
+func (t *TimeMS) FromString(s string) error {
+	if s == "t" {
+		return nil
+	}
+	return errors.New("not time")
+}
+
+// Length is the length of the strip in number of pixels.
+type Length struct{}
+
+func (l *Length) Eval(timeMS uint32, length int) int32 {
+	return int32(length)
+}
+
+func (l *Length) String() string {
+	return "l"
+}
+
+func (l *Length) FromString(s string) error {
+	if s == "l" {
+		return nil
+	}
+	return errors.New("not length")
 }
 
 // Const is a constant value.
 type Const int32
 
 // Eval implements Value.
-func (c Const) Eval(timeMS uint32, l int) int32 {
-	return int32(c)
+func (c *Const) Eval(timeMS uint32, l int) int32 {
+	return int32(*c)
+}
+
+func (c *Const) String() string {
+	return strconv.FormatInt(int64(*c), 10)
+}
+
+func (c *Const) FromString(s string) error {
+	i, err := strconv.ParseInt(s, 10, 32)
+	if err == nil {
+		*c = Const(i)
+	}
+	return err
 }
 
 // Percent is a percentage of the length. It is stored as a 16.16 fixed point.
 type Percent int32
 
 // Eval implements Value.
-func (p Percent) Eval(timeMS uint32, l int) int32 {
-	return int32(int64(l) * int64(p) / 65536)
+func (p *Percent) Eval(timeMS uint32, l int) int32 {
+	return int32(int64(l) * int64(*p) / 65536)
+}
+
+func (p *Percent) String() string {
+	return strconv.FormatFloat(float64(*p)/655.36, 'g', 4, 32) + "%"
+}
+
+func (p *Percent) FromString(s string) error {
+	if !strings.HasSuffix(s, "%") {
+		return errors.New("percent must end with %")
+	}
+	f, err := strconv.ParseFloat(s[:len(s)-1], 32)
+	if err == nil {
+		// Convert back to fixed point.
+		*p = Percent(int32(f * 655.36))
+	}
+	return err
 }
 
 // OpAdd adds a constant to timeMS.
 type OpAdd struct {
-	AddMS int32
+	L SValue
+	R SValue
 }
 
 // Eval implements Value.
 func (o *OpAdd) Eval(timeMS uint32, l int) int32 {
-	return int32(timeMS) + o.AddMS
+	out := int32(0)
+	if o.L.Value != nil {
+		out = o.L.Eval(timeMS, l)
+	}
+	if o.R.Value != nil {
+		out += o.R.Eval(timeMS, l)
+	}
+	return out
+}
+
+func (o *OpAdd) String() string {
+	out := ""
+	if o.L.Value != nil {
+		out = o.L.String() + "+"
+	} else {
+		out = "0+"
+	}
+	if o.R.Value != nil {
+		out += o.R.String()
+	} else {
+		out += "0"
+	}
+	return out
+}
+
+func (o *OpAdd) FromString(s string) error {
+	return errors.New("add: implement")
+}
+
+// OpGroup is a parenthesis pair.
+type OpGroup struct {
+	V SValue
+}
+
+func (o *OpGroup) Eval(timeMS uint32, l int) int32 {
+	if o.V.Value == nil {
+		return 0
+	}
+	return o.V.Eval(timeMS, l)
+}
+
+func (o *OpGroup) String() string {
+	if o.V.Value == nil {
+		return "(0)"
+	}
+	return "(" + o.V.String() + ")"
+}
+
+func (o *OpGroup) FromString(s string) error {
+	if len(s) < 3 || s[0] != '(' || s[len(s)-1] != ')' {
+		return errors.New("group: failed to parse")
+	}
+	// Count the ( and ) and match exactly.
+	return o.V.FromString(s[1 : len(s)-1])
 }
 
 // OpMod is a value that is cycling downward.
 type OpMod struct {
-	TickMS int32 // The cycling time. Maximum is ~25 days.
+	L SValue
+	R SValue // The cycling time. Maximum is ~25 days.
 }
 
 // Eval implements Value.
 func (o *OpMod) Eval(timeMS uint32, l int) int32 {
-	return int32(timeMS % uint32(o.TickMS))
+	if o.L.Value == nil || o.R.Value == nil {
+		return 0
+	}
+	return o.L.Eval(timeMS, l) % o.R.Eval(timeMS, l)
+	//return int32(timeMS % uint32(o.V.Eval(timeMS, l)))
+}
+
+func (o *OpMod) String() string {
+	if o.L.Value == nil || o.R.Value == nil {
+		return "<invalid mod>"
+	}
+	return o.L.String() + "%" + o.R.String()
+}
+
+func (o *OpMod) FromString(s string) error {
+	return errors.New("mod: implement")
+	parts := strings.SplitN(s, "%", 2)
+	if len(parts) != 2 {
+		return errors.New("mod: not valid")
+	}
+	if err := o.L.FromString(parts[0]); err != nil {
+		return err
+	}
+	return o.R.FromString(parts[1])
+}
+
+// OpMul is a value that is multiplying two values.
+type OpMul struct {
+	L SValue
+	R SValue
+}
+
+func (o *OpMul) Eval(timeMS uint32, l int) int32 {
+	if o.L.Value == nil || o.R.Value == nil {
+		return 0
+	}
+	return o.L.Eval(timeMS, l) * o.R.Eval(timeMS, l)
+}
+
+func (o *OpMul) String() string {
+	if o.L.Value == nil || o.R.Value == nil {
+		return "<invalid mul>"
+	}
+	return o.L.String() + "*" + o.R.String()
+}
+
+func (o *OpMul) FromString(s string) error {
+	return errors.New("mul: implement")
 }
 
 // OpStep is a value that is cycling upward.
 //
 // It is useful for offsets that are increasing as a stepping function.
 type OpStep struct {
-	TickMS int32 // The cycling time. Maximum is ~25 days.
+	V SValue // The cycling time. Maximum is ~25 days.
 }
 
 // Eval implements Value.
 func (o *OpStep) Eval(timeMS uint32, l int) int32 {
-	return int32(timeMS / uint32(o.TickMS) * uint32(o.TickMS))
+	if o.V.Value == nil {
+		return 0
+	}
+	t := uint32(o.V.Eval(timeMS, l))
+	return int32(timeMS / t * t)
+}
+
+func (o *OpStep) String() string {
+	return fmt.Sprintf("step(%s)", o.V)
+}
+
+func (o *OpStep) FromString(s string) error {
+	if !strings.HasPrefix(s, "step(") || !strings.HasSuffix(s, ")") {
+		return errors.New("step: invalid string")
+	}
+	return o.V.FromString(s[5 : len(s)-1])
+}
+
+// OpSub adds a constant to timeMS.
+type OpSub struct {
+	L SValue
+	R SValue
+}
+
+func (o *OpSub) Eval(timeMS uint32, l int) int32 {
+	out := int32(0)
+	if o.L.Value != nil {
+		out = o.L.Eval(timeMS, l)
+	}
+	if o.R.Value != nil {
+		out -= o.R.Eval(timeMS, l)
+	}
+	return out
+}
+
+func (o *OpSub) String() string {
+	out := ""
+	if o.L.Value != nil {
+		out = o.L.String() + "-"
+	} else {
+		out = "0-"
+	}
+	if o.R.Value != nil {
+		out += o.R.String()
+	} else {
+		out += "0"
+	}
+	return out
+}
+
+func (o *OpSub) FromString(s string) error {
+	return errors.New("sub: implement")
 }
 
 // Rand is a value that pseudo-randomly changes every TickMS millisecond. If
@@ -104,6 +327,22 @@ func (r *Rand) Eval(timeMS uint32, l int) int32 {
 	return int32(rand.NewSource(int64(timeMS / m)).Int63())
 }
 
+func (r *Rand) String() string {
+	if r.TickMS == 0 {
+		return "Rand"
+	}
+	return fmt.Sprintf("Rand(%d)", r.TickMS)
+}
+
+func (r *Rand) FromString(s string) error {
+	if s == "Rand" {
+		r.TickMS = 0
+		return nil
+	}
+	_, err := fmt.Sscanf(s, "Rand(%d)", &r.TickMS)
+	return err
+}
+
 // MovePerHour is the number of movement per hour.
 //
 // Can be either positive or negative. Maximum supported value is ±3600000, 1000
@@ -118,9 +357,8 @@ type MovePerHour SValue
 
 // Eval is not a Value implementation but it leverages an inner one.
 func (m *MovePerHour) Eval(timeMS uint32, l int, cycle int) int {
-	s := SValue(*m)
 	// Prevent overflows.
-	v := MinMax32(s.Eval(timeMS, l), -3600000, 3600000)
+	v := MinMax32((*SValue)(m).Eval(timeMS, l), -3600000, 3600000)
 	// TODO(maruel): Reduce the amount of int64 code in there yet keeping it from
 	// overflowing.
 	// offset ranges [0, 3599999]

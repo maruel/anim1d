@@ -44,7 +44,8 @@ func TestSValue_Eval(t *testing.T) {
 }
 
 func TestConst(t *testing.T) {
-	if Const(2).Eval(23, 0) != 2 {
+	c := Const(2)
+	if c.Eval(23, 0) != 2 {
 		t.Fail()
 	}
 }
@@ -65,29 +66,34 @@ func TestPercent(t *testing.T) {
 		{-6554, 0, 1000, -100},
 	}
 	for i, line := range data {
-		if v := Percent(line.p).Eval(line.timeMS, line.l); v != line.expected {
+		p := Percent(line.p)
+		if v := p.Eval(line.timeMS, line.l); v != line.expected {
 			t.Fatalf("%d: Percent(%v).Eval(%v, %v) = %v, expected %v", i, line.p, line.timeMS, line.l, v, line.expected)
 		}
 	}
 }
 
 func TestOpAdd(t *testing.T) {
-	if (&OpAdd{AddMS: 2}).Eval(23, 0) != 25 {
+	c := Const(2)
+	if (&OpAdd{L: SValue{&c}, R: SValue{&TimeMS{}}}).Eval(23, 0) != 25 {
 		t.Fail()
 	}
-	if (&OpAdd{AddMS: -2}).Eval(23, 0) != 21 {
+	c = Const(-2)
+	if (&OpAdd{L: SValue{&c}, R: SValue{&TimeMS{}}}).Eval(23, 0) != 21 {
 		t.Fail()
 	}
 }
 
 func TestOpMod(t *testing.T) {
-	if (&OpMod{TickMS: 2}).Eval(23, 0) != 1 {
+	c := Const(2)
+	if (&OpMod{L: SValue{&TimeMS{}}, R: SValue{&c}}).Eval(23, 0) != 1 {
 		t.Fail()
 	}
 }
 
 func TestOpStep(t *testing.T) {
-	if (&OpStep{TickMS: 21}).Eval(23, 0) != 21 {
+	c := Const(21)
+	if (&OpStep{V: SValue{&c}}).Eval(23, 0) != 21 {
 		t.Fail()
 	}
 }
@@ -233,7 +239,8 @@ func TestMovePerHour(t *testing.T) {
 		{2 * 3600000, 2, 10, 2},
 	}
 	for i, line := range data {
-		m := MovePerHour{Const(line.mps)}
+		c := Const(line.mps)
+		m := MovePerHour{&c}
 		if actual := m.Eval(line.timeMS, 0, line.cycle); actual != line.expected {
 			t.Fatalf("%d: %d.Eval(%d, %d) = %d != %d", i, line.mps, line.timeMS, line.cycle, actual, line.expected)
 		}

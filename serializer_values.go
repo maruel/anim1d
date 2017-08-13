@@ -9,33 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 )
 
 const randKey = "rand"
-
-// valuesLookup lists all the known values that can be instantiated.
-var valuesLookup map[string]reflect.Type
-
-var knownValues = []Value{
-	new(Const),
-	new(Percent),
-	&OpAdd{},
-	&OpMod{},
-	&OpStep{},
-	&Rand{},
-}
-
-func init() {
-	valuesLookup = make(map[string]reflect.Type, len(knownValues))
-	for _, i := range knownValues {
-		r := reflect.TypeOf(i).Elem()
-		valuesLookup[r.Name()] = r
-	}
-}
-
-// SValue
 
 // SValue is the serializable version of Value.
 type SValue struct {
@@ -53,69 +29,105 @@ func (s *SValue) Eval(timeMS uint32, l int) int32 {
 // UnmarshalJSON decodes a Value.
 //
 // It knows how to decode Const or other arbitrary Value.
-//
-// If unmarshalling fails, 'f' is not touched.
-func (s *SValue) UnmarshalJSON(b []byte) error {
+func (v *SValue) UnmarshalJSON(b []byte) error {
 	// Try to decode first as a int, then as a string, then as a dict. Not super
 	// efficient but it works.
 	if c, err := jsonUnmarshalInt32(b); err == nil {
-		s.Value = Const(c)
+		c2 := Const(c)
+		v.Value = &c2
 		return nil
 	}
-	if v, err := jsonUnmarshalString(b); err == nil {
-		// It could be either a Percent or a Rand.
-		if v == randKey {
-			s.Value = &Rand{}
-			return nil
-		}
-		if strings.HasSuffix(v, "%") {
-			var p Percent
-			if err = p.UnmarshalJSON(b); err == nil {
-				s.Value = &p
+	/*
+		if v, err := jsonUnmarshalString(b); err == nil {
+			// It could be either a Percent or a Rand.
+			if v == randKey {
+				s.Value = &Rand{}
+				return nil
 			}
-			return err
-		}
+			if strings.HasSuffix(v, "%") {
+				var p Percent
+				if err = p.UnmarshalJSON(b); err == nil {
+					s.Value = &p
+				}
+				return err
+			}
 
-		// Operations:
-		if strings.HasPrefix(v, "+") {
-			var o OpAdd
-			if err = o.UnmarshalJSON(b); err == nil {
-				s.Value = &o
+			// Operations:
+			if strings.HasPrefix(v, "+") {
+				var o OpAdd
+				if err = o.UnmarshalJSON(b); err == nil {
+					s.Value = &o
+				}
+				return err
 			}
+			if strings.HasPrefix(v, "-") {
+				var o OpAdd
+				if err = o.UnmarshalJSON(b); err == nil {
+					o.AddMS = -o.AddMS
+					s.Value = &o
+				}
+				return err
+			}
+			if strings.HasPrefix(v, "%") {
+				var o OpMod
+				if err = o.UnmarshalJSON(b); err == nil {
+					s.Value = &o
+				}
+				return err
+			}
+			return fmt.Errorf("unknown value %q", v)
+		}
+	*/
+	if s, err := jsonUnmarshalString(b); err == nil {
+		v2, err := parseValueString(s)
+		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(v, "-") {
-			var o OpAdd
-			if err = o.UnmarshalJSON(b); err == nil {
-				o.AddMS = -o.AddMS
-				s.Value = &o
-			}
-			return err
-		}
-		if strings.HasPrefix(v, "%") {
-			var o OpMod
-			if err = o.UnmarshalJSON(b); err == nil {
-				s.Value = &o
-			}
-			return err
-		}
-		return fmt.Errorf("unknown value %q", v)
+		v.Value = v2
+		return nil
 	}
 	o, err := jsonUnmarshalWithType(b, valuesLookup, nil)
 	if err != nil {
 		return err
 	}
-	s.Value = o.(Value)
+	v.Value = o.(Value)
 	return nil
 }
 
 // MarshalJSON includes the additional key "_type" to help with unmarshalling.
-func (s *SValue) MarshalJSON() ([]byte, error) {
-	if s.Value == nil {
+func (v *SValue) MarshalJSON() ([]byte, error) {
+	if v.Value == nil {
 		// nil value marshals to the constant 0.
 		return []byte("0"), nil
 	}
-	return jsonMarshalWithType(s.Value)
+	return jsonMarshalWithType(v.Value)
+}
+
+// UnmarshalJSON decodes the "t".
+func (t *TimeMS) UnmarshalJSON(b []byte) error {
+	s, err := jsonUnmarshalString(b)
+	if err != nil {
+		return err
+	}
+	return t.FromString(s)
+}
+
+func (t *TimeMS) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+// UnmarshalJSON decodes the "t".
+func (l *Length) UnmarshalJSON(b []byte) error {
+	s, err := jsonUnmarshalString(b)
+	if err != nil {
+		return err
+	}
+	return l.FromString(s)
+	// TODO(maruel): Do a jsonUnmarshalWithType(b, valuesLookup, nil) for each type?
+}
+
+func (l *Length) MarshalJSON() ([]byte, error) {
+	return json.Marshal(l.String())
 }
 
 // UnmarshalJSON decodes the int to the const.
@@ -123,10 +135,13 @@ func (s *SValue) MarshalJSON() ([]byte, error) {
 // If unmarshalling fails, 'c' is not touched.
 func (c *Const) UnmarshalJSON(b []byte) error {
 	i, err := jsonUnmarshalInt32(b)
-	if err != nil {
-		return err
+	if err == nil {
+		*c = Const(i)
+		return nil
 	}
-	*c = Const(i)
+	if s, err := jsonUnmarshalString(b); err == nil {
+		return c.FromString(s)
+	}
 	return err
 }
 
@@ -143,20 +158,12 @@ func (p *Percent) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasSuffix(s, "%") {
-		return errors.New("percent must end with %")
-	}
-	f, err := strconv.ParseFloat(s[:len(s)-1], 32)
-	if err == nil {
-		// Convert back to fixed point.
-		*p = Percent(int32(f * 655.36))
-	}
-	return err
+	return p.FromString(s)
 }
 
 // MarshalJSON encodes the percent as a string.
 func (p *Percent) MarshalJSON() ([]byte, error) {
-	return json.Marshal(strconv.FormatFloat(float64(*p)/655.36, 'g', 4, 32) + "%")
+	return json.Marshal(p.String())
 }
 
 // UnmarshalJSON decodes the add in the form of a string.
@@ -167,29 +174,24 @@ func (o *OpAdd) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	i := int64(0)
-	if strings.HasPrefix(s, "+") {
-		i, err = strconv.ParseInt(s[1:], 10, 32)
-	} else if strings.HasPrefix(s, "-") {
-		i, err = strconv.ParseInt(s, 10, 32)
-	} else {
-		return errors.New("add: must start with + or -")
-	}
-	if err == nil {
-		o.AddMS = int32(i)
-	}
-	if i < 0 {
-		return errors.New("add: value must be positive")
-	}
-	return err
+	return o.FromString(s)
 }
 
 // MarshalJSON encodes the add as a string.
 func (o *OpAdd) MarshalJSON() ([]byte, error) {
-	if o.AddMS >= 0 {
-		return json.Marshal("+" + strconv.FormatInt(int64(o.AddMS), 10))
+	return json.Marshal(o.String())
+}
+
+func (o *OpGroup) UnmarshalJSON(b []byte) error {
+	s, err := jsonUnmarshalString(b)
+	if err != nil {
+		return err
 	}
-	return json.Marshal(strconv.FormatInt(int64(o.AddMS), 10))
+	return o.FromString(s)
+}
+
+func (o *OpGroup) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
 }
 
 // UnmarshalJSON decodes the mod in the form of a string.
@@ -200,22 +202,36 @@ func (o *OpMod) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(s, "%") {
-		return errors.New("mod: must start with %")
-	}
-	i, err := strconv.ParseInt(s[1:], 10, 32)
-	if err == nil {
-		o.TickMS = int32(i)
-	}
-	if i < 0 {
-		return errors.New("mod: value must be positive")
-	}
-	return err
+	return o.FromString(s)
 }
 
 // MarshalJSON encodes the mod as a string.
 func (o *OpMod) MarshalJSON() ([]byte, error) {
-	return json.Marshal("%" + strconv.FormatInt(int64(o.TickMS), 10))
+	return json.Marshal(o.String())
+}
+
+func (o *OpMul) UnmarshalJSON(b []byte) error {
+	s, err := jsonUnmarshalString(b)
+	if err != nil {
+		return err
+	}
+	return o.FromString(s)
+}
+
+func (o *OpMul) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
+}
+
+func (o *OpSub) UnmarshalJSON(b []byte) error {
+	s, err := jsonUnmarshalString(b)
+	if err != nil {
+		return err
+	}
+	return o.FromString(s)
+}
+
+func (o *OpSub) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
 }
 
 // UnmarshalJSON decodes the string to the rand.
@@ -224,34 +240,22 @@ func (o *OpMod) MarshalJSON() ([]byte, error) {
 func (r *Rand) UnmarshalJSON(b []byte) error {
 	s, err := jsonUnmarshalString(b)
 	if err == nil {
-		// Shortcut.
-		if s != randKey {
-			return errors.New("invalid format")
+		return r.FromString(s)
+	}
+	v, err := jsonUnmarshalWithType(b, valuesLookup, nil)
+	if err == nil {
+		if r2, ok := v.(*Rand); ok {
+			*r = *r2
+			return nil
 		}
-		r.TickMS = 0
-		return nil
+		return errors.New("rand: internal error")
 	}
-	// SValue.UnmarshalJSON would handle it but implement it here so calling
-	// UnmarshalJSON on a concrete instance still work. The issue is that we do
-	// not want to recursively call ourselves so create a temporary type.
-	type tmpRand Rand
-	var r2 tmpRand
-	if err := json.Unmarshal(b, &r2); err != nil {
-		return err
-	}
-	*r = Rand(r2)
-	return nil
+	return err
 }
 
 // MarshalJSON encodes the rand as a string.
 func (r *Rand) MarshalJSON() ([]byte, error) {
-	if r.TickMS == 0 {
-		// Shortcut.
-		return json.Marshal(randKey)
-	}
-	type tmpRand Rand
-	r2 := tmpRand(*r)
-	return jsonMarshalWithTypeName(r2, "Rand")
+	return json.Marshal(r.String())
 }
 
 // UnmarshalJSON is because MovePerHour is a superset of SValue.
@@ -268,4 +272,43 @@ func (m *MovePerHour) UnmarshalJSON(b []byte) error {
 func (m *MovePerHour) MarshalJSON() ([]byte, error) {
 	s := SValue{m.Value}
 	return s.MarshalJSON()
+}
+
+//
+
+// valuesLookup lists all the known values that can be instantiated.
+var valuesLookup map[string]reflect.Type
+
+var knownValues = []Value{
+	&TimeMS{},
+	&Length{},
+	new(Const),
+	new(Percent),
+	&OpAdd{},
+	&OpGroup{},
+	&OpMod{},
+	&OpMul{},
+	&OpStep{},
+	&OpSub{},
+	&Rand{},
+}
+
+func init() {
+	valuesLookup = make(map[string]reflect.Type, len(knownValues))
+	for _, i := range knownValues {
+		r := reflect.TypeOf(i).Elem()
+		valuesLookup[r.Name()] = r
+	}
+}
+
+// parseValueString returns a Value object out of the string.
+func parseValueString(s string) (Value, error) {
+	// TODO(maruel): Smarter. Use brute force in the meantime.
+	for _, t := range knownValues {
+		v := reflect.New(reflect.TypeOf(t).Elem()).Interface().(Value)
+		if err := v.FromString(s); err == nil {
+			return v, nil
+		}
+	}
+	return nil, fmt.Errorf("value: failed to parse %q", s)
 }

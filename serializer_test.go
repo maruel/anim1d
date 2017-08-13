@@ -7,6 +7,7 @@ package anim1d
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 	"testing"
 )
@@ -76,61 +77,89 @@ func TestJSONPatternsSpotCheck(t *testing.T) {
 
 func TestJSONValues(t *testing.T) {
 	for _, v := range knownValues {
-		v2 := &SValue{v}
-		b, err := json.Marshal(v2)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if isConst(v) {
-			if _, err = strconv.ParseInt(string(b), 10, 32); err != nil {
-				t.Fatalf("%v", err)
+		name := reflect.TypeOf(v).Elem().Name()
+		v := v
+		t.Run(name, func(t *testing.T) {
+			v2 := &SValue{v}
+			b, err := json.Marshal(v2)
+			if err != nil {
+				t.Fatal(err)
 			}
-		} else if isPercent(v) {
-			// Skip the %.
-			f := 0.
-			if _, err = fmt.Sscanf(string(b), "\"%g%%\"", &f); err != nil {
-				t.Fatalf("%v", err)
+			if isConst(v) {
+				if _, err = strconv.ParseInt(string(b), 10, 32); err != nil {
+					t.Fatalf("%v", err)
+				}
+			} else if isPercent(v) {
+				// Skip the %.
+				f := 0.
+				if _, err = fmt.Sscanf(string(b), "\"%g%%\"", &f); err != nil {
+					t.Fatalf("%v", err)
+				}
+			} else if isOpAdd(v) {
+				// Skip the +.
+				i := 0
+				if _, err = fmt.Sscanf(string(b), "\"+%d\"", &i); err != nil {
+					t.Fatalf("%v", err)
+				}
+			} else if isOpMod(v) {
+				// Skip the %.
+				i := 0
+				if _, err = fmt.Sscanf(string(b), "\"%%%d\"", &i); err != nil {
+					t.Fatalf("%v", err)
+				}
+			} else if isRand(v) && string(b) == "\""+randKey+"\"" {
+				// Ok.
+			} else {
+				if c := b[0]; c != uint8('{') {
+					t.Errorf("want '{', got %q", c)
+				}
 			}
-		} else if isOpAdd(v) {
-			// Skip the +.
-			i := 0
-			if _, err = fmt.Sscanf(string(b), "\"+%d\"", &i); err != nil {
-				t.Fatalf("%v", err)
-			}
-		} else if isOpMod(v) {
-			// Skip the %.
-			i := 0
-			if _, err = fmt.Sscanf(string(b), "\"%%%d\"", &i); err != nil {
-				t.Fatalf("%v", err)
-			}
-		} else if isRand(v) && string(b) == "\""+randKey+"\"" {
-			// Ok.
-		} else {
-			if c := b[0]; c != uint8('{') {
-				t.Fatalf("Expected '{', got %q", c)
-			}
-		}
-		v2.Value = nil
-		if err = json.Unmarshal(b, v2); err != nil {
-			t.Fatalf("%q: %v", b, err)
-		}
+			/*
+				if _, err := parseValueString(s); err != nil {
+					t.Fatalf("%d: %v", i, err)
+				}
+			*/
+		})
 	}
 }
 
-func TestJSONValuesSpotCheck(t *testing.T) {
-	// Increase coverage of edge cases.
-	c := Const(10)
-	serializeValue(t, &c, `10`)
-	p := Percent(65536)
-	serializeValue(t, &p, `"100%"`)
-	p = 6554
-	serializeValue(t, &p, `"10%"`)
-	p = 6553
-	serializeValue(t, &p, `"9.999%"`)
-	p = -6554
-	serializeValue(t, &p, `"-10%"`)
-	serializeValue(t, &Rand{}, `"rand"`)
-	serializeValue(t, &Rand{TickMS: 43}, `{"TickMS":43,"_type":"Rand"}`)
+func TestStringValues(t *testing.T) {
+	//c1 := Const(1)
+	//c2 := Const(2)
+	//c3 := Const(3)
+	c10 := Const(10)
+	p10 := Percent(6554)
+	pm10 := Percent(-6554)
+	pm99 := Percent(-6553)
+	data := []struct {
+		v        Value
+		expected string
+	}{
+		{&TimeMS{}, "t"},
+		{&Length{}, "l"},
+		{&c10, "10"},
+		{&p10, "10%"},
+		{&pm10, "-10%"},
+		{&pm99, "-9.999%"},
+		/*
+			{&OpAdd{SValue{&c1}, SValue{&c2}}, "1+2"},
+			{&OpGroup{SValue{&c1}}, ""},
+			{&OpMod{SValue{&c3}, SValue{&c2}}, ""},
+			{&OpMul{SValue{&c2}, SValue{&c3}}, ""},
+			{&OpStep{SValue{&c2}}, ""},
+			{&OpSub{SValue{&c2}, SValue{&c1}}, ""},
+		*/
+		{&Rand{}, "Rand"},
+	}
+	for i, line := range data {
+		s := line.v.String()
+		if line.expected != s {
+			t.Fatalf("%d: %s != %s", i, line.expected, s)
+		}
+		if _, err := parseValueString(s); err != nil {
+			t.Fatalf("%d: %v", i, err)
+		}
+	}
 }
 
 //
@@ -161,6 +190,7 @@ func isColorOrFrameOrRainbow(p Pattern) bool {
 	return ok
 }
 
+// serializeValue tests tests both JSON marshalling and unmarshalling.
 func serializeValue(t *testing.T, v Value, expected string) {
 	v2 := &SValue{v}
 	b, err := json.Marshal(v2)
@@ -174,6 +204,16 @@ func serializeValue(t *testing.T, v Value, expected string) {
 	if err = json.Unmarshal(b, v2); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func isTimeMS(v Value) bool {
+	_, ok := v.(*TimeMS)
+	return ok
+}
+
+func isLength(v Value) bool {
+	_, ok := v.(*Length)
+	return ok
 }
 
 func isConst(v Value) bool {
