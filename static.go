@@ -21,6 +21,7 @@ type Color struct {
 	R, G, B uint8
 }
 
+// Render implements Pattern.
 func (c *Color) Render(pixels Frame, timeMS uint32) {
 	for i := range pixels {
 		pixels[i] = *c
@@ -120,6 +121,7 @@ func (c *Color) FromRGBString(s string) error {
 // (which is recursive).
 type Frame []Color
 
+// Render implements Pattern.
 func (f Frame) Render(pixels Frame, timeMS uint32) {
 	copy(pixels, f)
 }
@@ -221,6 +223,7 @@ type Rainbow struct {
 	buf Frame
 }
 
+// Render implements Pattern.
 func (r *Rainbow) Render(pixels Frame, timeMS uint32) {
 	if len(r.buf) != len(pixels) {
 		r.buf.reset(len(pixels))
@@ -281,6 +284,7 @@ type Repeated struct {
 	Frame Frame
 }
 
+// Render implements Pattern.
 func (r *Repeated) Render(pixels Frame, timeMS uint32) {
 	if len(pixels) == 0 || len(r.Frame) == 0 {
 		return

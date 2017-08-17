@@ -71,7 +71,7 @@ func (t *ThumbnailsCache) GIF(serialized []byte) ([]byte, error) {
 		Image:           make([]*image.Paletted, 0, nbImg),
 		Delay:           make([]int, 0, nbImg),
 		Disposal:        make([]byte, 0, nbImg),
-		Config:          image.Config{pal, t.NumberLEDs, 1},
+		Config:          image.Config{ColorModel: pal, Width: t.NumberLEDs, Height: 1},
 		BackgroundIndex: 1,
 	}
 	frameDuration := (100 + t.ThumbnailHz>>1) / t.ThumbnailHz

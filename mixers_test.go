@@ -112,7 +112,7 @@ func TestPingPong(t *testing.T) {
 }
 
 func TestCrop(t *testing.T) {
-	// Crop skips the begining and the end of the source.
+	// Crop skips the beginning and the end of the source.
 	f := Frame{
 		{0x10, 0x10, 0x10},
 		{0x20, 0x20, 0x20},
@@ -123,14 +123,14 @@ func TestCrop(t *testing.T) {
 }
 
 func TestSubset(t *testing.T) {
-	// Subset skips the begining and the end of the destination.
+	// Subset skips the beginning and the end of the destination.
 	f := Frame{
 		{0x10, 0x10, 0x10},
 		{0x20, 0x20, 0x20},
 		{0x30, 0x30, 0x30},
 	}
 	p := &Subset{Child: SPattern{f}, Offset: SValue{Const(1)}, Length: SValue{Const(2)}}
-	// Skip the begining and the end of the destination.
+	// Skip the beginning and the end of the destination.
 	expected := Frame{
 		{},
 		{0x10, 0x10, 0x10},

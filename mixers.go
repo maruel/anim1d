@@ -18,6 +18,7 @@ type Gradient struct {
 	buf   Frame
 }
 
+// Render implements Pattern.
 func (g *Gradient) Render(pixels Frame, timeMS uint32) {
 	l := len(pixels)
 	if l == 0 {
@@ -46,6 +47,7 @@ type Split struct {
 	Offset SValue // Point to split between both sides.
 }
 
+// Render implements Pattern.
 func (s *Split) Render(pixels Frame, timeMS uint32) {
 	offset := MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels))
 	if s.Left.Pattern != nil && offset != 0 {
@@ -68,6 +70,7 @@ type Transition struct {
 	buf          Frame
 }
 
+// Render implements Pattern.
 func (t *Transition) Render(pixels Frame, timeMS uint32) {
 	if timeMS <= t.OffsetMS {
 		// Before transition.
@@ -102,6 +105,7 @@ type Loop struct {
 	buf          Frame
 }
 
+// Render implements Pattern.
 func (l *Loop) Render(pixels Frame, timeMS uint32) {
 	lp := uint32(len(l.Patterns))
 	if lp == 0 {
@@ -145,6 +149,7 @@ type Rotate struct {
 	buf         Frame
 }
 
+// Render implements Pattern.
 func (r *Rotate) Render(pixels Frame, timeMS uint32) {
 	l := len(pixels)
 	r.buf.reset(l)
@@ -167,6 +172,7 @@ type Chronometer struct {
 	buf   Frame
 }
 
+// Render implements Pattern.
 func (r *Chronometer) Render(pixels Frame, timeMS uint32) {
 	l := uint32(len(pixels))
 	if l == 0 {
@@ -211,6 +217,7 @@ type PingPong struct {
 	buf         Frame
 }
 
+// Render implements Pattern.
 func (p *PingPong) Render(pixels Frame, timeMS uint32) {
 	if len(pixels) == 0 {
 		return
@@ -265,7 +272,7 @@ func (p *PingPong) Render(pixels Frame, timeMS uint32) {
 	}
 }
 
-// Crop skips the begining and the end of the source.
+// Crop skips the beginning and the end of the source.
 type Crop struct {
 	Child  SPattern
 	Before SValue // Starting pixels to skip
@@ -273,6 +280,7 @@ type Crop struct {
 	buf    Frame
 }
 
+// Render implements Pattern.
 func (c *Crop) Render(pixels Frame, timeMS uint32) {
 	b := int(MinMax32(c.Before.Eval(timeMS, len(pixels)), 0, 1000))
 	a := int(MinMax32(c.After.Eval(timeMS, len(pixels)), 0, 1000))
@@ -282,13 +290,14 @@ func (c *Crop) Render(pixels Frame, timeMS uint32) {
 	copy(pixels, c.buf[b:])
 }
 
-// Subset skips the begining and the end of the destination.
+// Subset skips the beginning and the end of the destination.
 type Subset struct {
 	Child  SPattern
 	Offset SValue // Starting pixels to skip
 	Length SValue // Length of the pixels to carry over
 }
 
+// Render implements Pattern.
 func (s *Subset) Render(pixels Frame, timeMS uint32) {
 	if s.Child.Pattern == nil {
 		return
@@ -304,6 +313,7 @@ type Dim struct {
 	Intensity SValue   // 0 is transparent, 255 is fully opaque with original colors.
 }
 
+// Render implements Pattern.
 func (d *Dim) Render(pixels Frame, timeMS uint32) {
 	d.Child.Render(pixels, timeMS)
 	i := MinMax32(d.Intensity.Eval(timeMS, len(pixels)), 0, 255)
@@ -317,6 +327,7 @@ type Add struct {
 	buf      Frame      //
 }
 
+// Render implements Pattern.
 func (a *Add) Render(pixels Frame, timeMS uint32) {
 	a.buf.reset(len(pixels))
 	// Draw and merge each pattern.
@@ -343,6 +354,7 @@ type Scale struct {
 	buf        Frame
 }
 
+// Render implements Pattern.
 func (s *Scale) Render(pixels Frame, timeMS uint32) {
 	if f, ok := s.Child.Pattern.(Frame); ok {
 		if s.RatioMilli.Eval(timeMS, len(pixels)) == 0 {

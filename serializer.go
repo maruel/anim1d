@@ -82,6 +82,7 @@ type SPattern struct {
 	Pattern
 }
 
+// Render implements Pattern.
 func (s *SPattern) Render(pixels Frame, timeMS uint32) {
 	if s.Pattern == nil {
 		return
@@ -93,12 +94,12 @@ func (s *SPattern) Render(pixels Frame, timeMS uint32) {
 //
 // It knows how to decode Color, Frame or other arbitrary Pattern.
 //
-// If unmarshalling fails, 'p' is not touched.
-func (p *SPattern) UnmarshalJSON(b []byte) error {
+// If unmarshalling fails, 's' is not touched.
+func (s *SPattern) UnmarshalJSON(b []byte) error {
 	// Try to decode first as a string, then as a dict. Not super efficient but
 	// it works.
 	if p2, err := parsePatternString(b); err == nil {
-		p.Pattern = p2
+		s.Pattern = p2
 		return nil
 	}
 	o, err := jsonUnmarshalWithType(b, patternsLookup, nil)
@@ -106,9 +107,9 @@ func (p *SPattern) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	if o == nil {
-		p.Pattern = nil
+		s.Pattern = nil
 	} else {
-		p.Pattern = o.(Pattern)
+		s.Pattern = o.(Pattern)
 	}
 	return nil
 }
@@ -163,11 +164,11 @@ func (r *Rainbow) MarshalJSON() ([]byte, error) {
 }
 
 // MarshalJSON includes the additional key "_type" to help with unmarshalling.
-func (p *SPattern) MarshalJSON() ([]byte, error) {
-	if p.Pattern == nil {
+func (s *SPattern) MarshalJSON() ([]byte, error) {
+	if s.Pattern == nil {
 		return []byte("{}"), nil
 	}
-	return jsonMarshalWithType(p.Pattern)
+	return jsonMarshalWithType(s.Pattern)
 }
 
 // LoadPNG loads a PNG file and creates a Loop out of the lines.
@@ -249,6 +250,7 @@ type SValue struct {
 	Value
 }
 
+// Eval implements Value.
 func (s *SValue) Eval(timeMS uint32, l int) int32 {
 	if s.Value == nil {
 		return 0
@@ -261,65 +263,65 @@ func (s *SValue) Eval(timeMS uint32, l int) int32 {
 // It knows how to decode Const or other arbitrary Value.
 //
 // If unmarshalling fails, 'f' is not touched.
-func (v *SValue) UnmarshalJSON(b []byte) error {
+func (s *SValue) UnmarshalJSON(b []byte) error {
 	// Try to decode first as a int, then as a string, then as a dict. Not super
 	// efficient but it works.
 	if c, err := jsonUnmarshalInt32(b); err == nil {
-		v.Value = Const(c)
+		s.Value = Const(c)
 		return nil
 	}
-	if s, err := jsonUnmarshalString(b); err == nil {
+	if v, err := jsonUnmarshalString(b); err == nil {
 		// It could be either a Percent or a Rand.
-		if s == randKey {
-			v.Value = &Rand{}
+		if v == randKey {
+			s.Value = &Rand{}
 			return nil
 		}
-		if strings.HasPrefix(s, "+") {
+		if strings.HasPrefix(v, "+") {
 			var o OpAdd
 			if err := o.UnmarshalJSON(b); err == nil {
-				v.Value = &o
+				s.Value = &o
 			}
 			return err
 		}
-		if strings.HasPrefix(s, "-") {
+		if strings.HasPrefix(v, "-") {
 			var o OpAdd
 			if err := o.UnmarshalJSON(b); err == nil {
 				o.AddMS = -o.AddMS
-				v.Value = &o
+				s.Value = &o
 			}
 			return err
 		}
-		if strings.HasPrefix(s, "%") {
+		if strings.HasPrefix(v, "%") {
 			var o OpMod
 			if err := o.UnmarshalJSON(b); err == nil {
-				v.Value = &o
+				s.Value = &o
 			}
 			return err
 		}
-		if strings.HasSuffix(s, "%") {
+		if strings.HasSuffix(v, "%") {
 			var p Percent
 			if err := p.UnmarshalJSON(b); err == nil {
-				v.Value = &p
+				s.Value = &p
 			}
 			return err
 		}
-		return fmt.Errorf("unknown value %q", s)
+		return fmt.Errorf("unknown value %q", v)
 	}
 	o, err := jsonUnmarshalWithType(b, valuesLookup, nil)
 	if err != nil {
 		return err
 	}
-	v.Value = o.(Value)
+	s.Value = o.(Value)
 	return nil
 }
 
 // MarshalJSON includes the additional key "_type" to help with unmarshalling.
-func (v *SValue) MarshalJSON() ([]byte, error) {
-	if v.Value == nil {
+func (s *SValue) MarshalJSON() ([]byte, error) {
+	if s.Value == nil {
 		// nil value marshals to the constant 0.
 		return []byte("0"), nil
 	}
-	return jsonMarshalWithType(v.Value)
+	return jsonMarshalWithType(s.Value)
 }
 
 // UnmarshalJSON decodes the int to the const.

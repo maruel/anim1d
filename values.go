@@ -44,6 +44,7 @@ type Value interface {
 // Const is a constant value.
 type Const int32
 
+// Eval implements Value.
 func (c Const) Eval(timeMS uint32, l int) int32 {
 	return int32(c)
 }
@@ -51,6 +52,7 @@ func (c Const) Eval(timeMS uint32, l int) int32 {
 // Percent is a percentage of the length. It is stored as a 16.16 fixed point.
 type Percent int32
 
+// Eval implements Value.
 func (p Percent) Eval(timeMS uint32, l int) int32 {
 	return int32(int64(l) * int64(p) / 65536)
 }
@@ -60,6 +62,7 @@ type OpAdd struct {
 	AddMS int32
 }
 
+// Eval implements Value.
 func (o *OpAdd) Eval(timeMS uint32, l int) int32 {
 	return int32(timeMS) + o.AddMS
 }
@@ -69,6 +72,7 @@ type OpMod struct {
 	TickMS int32 // The cycling time. Maximum is ~25 days.
 }
 
+// Eval implements Value.
 func (o *OpMod) Eval(timeMS uint32, l int) int32 {
 	return int32(timeMS % uint32(o.TickMS))
 }
@@ -80,6 +84,7 @@ type OpStep struct {
 	TickMS int32 // The cycling time. Maximum is ~25 days.
 }
 
+// Eval implements Value.
 func (o *OpStep) Eval(timeMS uint32, l int) int32 {
 	return int32(timeMS / uint32(o.TickMS) * uint32(o.TickMS))
 }
@@ -90,6 +95,7 @@ type Rand struct {
 	TickMS int32 // The resolution at which the random value changes.
 }
 
+// Eval implements Value.
 func (r *Rand) Eval(timeMS uint32, l int) int32 {
 	m := uint32(r.TickMS)
 	if m == 0 {
@@ -137,6 +143,7 @@ type Equation struct {
 	f func(timeMS uint32) int32
 }
 
+// Eval implements Value.
 func (e *Equation) Eval(timeMS uint32) int32 {
 	// Compiles the equation to an actual value and precompile it.
 	if e.f == nil {
@@ -157,6 +164,7 @@ func (e *Equation) Eval(timeMS uint32) int32 {
 // bell.
 type Bell struct{}
 
+// Scale scales input [0, 65535] to output [0, 65535] as a bell curve.
 func (b *Bell) Scale(v uint16) uint16 {
 	switch {
 	case v == 0:
@@ -179,6 +187,7 @@ func (b *Bell) Scale(v uint16) uint16 {
 // https://www.w3.org/TR/web-animations/#scaling-using-a-cubic-bezier-curve
 type Curve string
 
+// All the kind of known curves.
 const (
 	Ease       Curve = "ease"
 	EaseIn     Curve = "ease-in"
@@ -243,6 +252,7 @@ func (c Curve) Scale8(intensity uint16) uint8 {
 // Interpolation specifies a way to scales a pixel strip.
 type Interpolation string
 
+// All the kinds of interpolations.
 const (
 	NearestSkip Interpolation = "nearestskip" // Selects the nearest pixel but when upscaling, skips on missing pixels.
 	Nearest     Interpolation = "nearest"     // Selects the nearest pixel, gives a blocky view.

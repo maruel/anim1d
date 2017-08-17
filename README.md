@@ -7,4 +7,4 @@ Stateless 1 dimensional animation code. Designed for:
 - Serializable.
 - Synchronizable across devices.
 
-Please refer to [![GoDoc](https://godoc.org/github.com/maruel/anim1d?status.svg)](https://godoc.org/github.com/maruel/anim1d).
+[![GoDoc](https://godoc.org/github.com/maruel/anim1d?status.svg)](https://godoc.org/github.com/maruel/anim1d) [![Go Report Card](https://goreportcard.com/badge/github.com/maruel/anim1d)](https://goreportcard.com/report/github.com/maruel/anim1d)

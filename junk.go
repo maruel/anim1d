@@ -19,11 +19,13 @@ import (
 //    - Rotation de la terre?
 //    - Station Internationale?
 
-// Aurore commence lentement, se transforme lentement et éventuellement
-// disparait.
+// Aurore is an experimental generator.
+//
+// It starts slowly, slowly transform itself then disappear.
 type Aurore struct {
 }
 
+// Render implements Pattern.
 func (a *Aurore) Render(pixels Frame, timeMS uint32) {
 	// TODO(maruel): Redo.
 	y := float32(timeMS) * .01
@@ -38,11 +40,13 @@ func (a *Aurore) Render(pixels Frame, timeMS uint32) {
 	}
 }
 
+// NightStars is an experimental generator.
 type NightStars struct {
 	C     Color
 	stars Frame
 }
 
+// Render implements Pattern.
 func (n *NightStars) Render(pixels Frame, timeMS uint32) {
 	if len(n.stars) != len(pixels) {
 		r := rand.NewSource(0)
@@ -70,6 +74,7 @@ func (n *NightStars) Render(pixels Frame, timeMS uint32) {
 	}
 }
 
+// Lightning is an experimental generator.
 type Lightning struct {
 	Center    SValue // offset of the center, from the left
 	HalfWidth SValue // in pixels
@@ -94,6 +99,7 @@ var lightningCycle = []struct {
 	{1500, 0},
 }
 
+// Render implements Pattern.
 func (l *Lightning) Render(pixels Frame, timeMS uint32) {
 	// Will fail after 25 days.
 	offset := timeMS - uint32(l.StartMS.Eval(timeMS, len(pixels)))
@@ -129,6 +135,7 @@ type Thunderstorm struct {
 	nextMS  uint32
 }
 
+// Render implements Pattern.
 func (t *Thunderstorm) Render(pixels Frame, timeMS uint32) {
 	/*
 		//freq := 3
@@ -165,6 +172,7 @@ type WishingStar struct {
 	AverageDelay time.Duration // Average delay between each wishing star.
 }
 
+// Render implements Pattern.
 func (w *WishingStar) Render(pixels Frame, timeMS uint32) {
 	/*
 		// Create a deterministic replay by using the current number of
