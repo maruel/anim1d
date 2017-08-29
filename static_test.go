@@ -8,8 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
-
-	"github.com/maruel/ut"
 )
 
 func TestColor(t *testing.T) {
@@ -28,40 +26,35 @@ func TestColor_Add(t *testing.T) {
 }
 
 func TestColor_Mix(t *testing.T) {
-	w := Color{255, 255, 255}
-	b := Color{0, 0, 0}
-	c := w
-	c.Mix(b, 0)
-	ut.AssertEqual(t, c, w)
-	c = w
-	c.Mix(b, 255)
-	ut.AssertEqual(t, c, b)
+	white := Color{255, 255, 255}
+	black := Color{0, 0, 0}
 
-	// Not sure where this difference comes from.
-	c = w
-	c.Mix(b, 128)
-	ut.AssertEqual(t, c, Color{127, 127, 127})
-	c = b
-	c.Mix(w, 128)
-	ut.AssertEqual(t, c, Color{128, 128, 128})
-
-	// Test for overflow.
-	c = w
-	c.Mix(w, 0)
-	ut.AssertEqual(t, c, w)
-	c.Mix(w, 128)
-	ut.AssertEqual(t, c, w)
-	c.Mix(w, 255)
-	ut.AssertEqual(t, c, w)
-
-	// Verify channels.
-	a := Color{0x10, 0x20, 0x30}
-	c = a
-	c.Mix(b, 0)
-	ut.AssertEqual(t, c, a)
-	c = b
-	c.Mix(a, 255)
-	ut.AssertEqual(t, c, a)
+	data := []struct {
+		start    Color
+		new      Color
+		mix      uint8
+		expected Color
+	}{
+		{white, black, 0, white},
+		{white, black, 255, black},
+		// Rounding is hard.
+		{white, black, 128, Color{127, 127, 127}},
+		{black, white, 128, Color{128, 128, 128}},
+		// Test for overflow.
+		{white, white, 0, white},
+		{white, white, 128, white},
+		{white, white, 255, white},
+		// Verify channels.
+		{Color{0x10, 0x20, 0x30}, black, 0, Color{0x10, 0x20, 0x30}},
+		{black, Color{0x10, 0x20, 0x30}, 255, Color{0x10, 0x20, 0x30}},
+	}
+	for i, line := range data {
+		c := line.start
+		c.Mix(line.new, line.mix)
+		if c != line.expected {
+			t.Fatalf("%d: %v.Mix(%v, %v) = %v; expected %v", i, line.start, line.new, line.mix, c, line.expected)
+		}
+	}
 }
 
 func TestColor_FromString(t *testing.T) {
@@ -574,8 +567,12 @@ func TestWaveLength2RGB(t *testing.T) {
 		}
 	}
 	for i, line := range data {
-		ut.AssertEqualIndex(t, i, line.expected, waveLength2RGB(line.input))
-		ut.AssertEqual(t, i+379, int(line.input))
+		if v := waveLength2RGB(line.input); v != line.expected {
+			t.Fatalf("%d: waveLength2RGB(%v) = %v, expected %v", i, line.input, v, line.expected)
+		}
+		if i+379 != int(line.input) {
+			t.Fatalf("%d != %d", i+379, int(line.input))
+		}
 	}
 }
 

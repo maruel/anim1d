@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
-
-	"github.com/maruel/ut"
 )
 
 func TestNilObject(t *testing.T) {
@@ -27,16 +25,24 @@ func TestJSONPatterns(t *testing.T) {
 	for _, p := range knownPatterns {
 		p2 := &SPattern{p}
 		b, err := json.Marshal(p2)
-		ut.AssertEqual(t, nil, err)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if isColorOrFrameOrRainbow(p) {
-			ut.AssertEqual(t, uint8('"'), b[0])
+			if c := b[0]; c != uint8('"') {
+				t.Fatalf("Expected '\"', got %q", c)
+			}
 		} else {
-			ut.AssertEqual(t, uint8('{'), b[0])
+			if c := b[0]; c != uint8('{') {
+				t.Fatalf("Expected '{', got %q", c)
+			}
 		}
 		// Must not crash on nil members and empty frame.
 		p2.Render(Frame{}, 0)
 		p2.Pattern = nil
-		ut.AssertEqualf(t, nil, json.Unmarshal(b, p2), "%s", b)
+		if err := json.Unmarshal(b, p2); err != nil {
+			t.Fatalf("%s, %vv", b, err)
+		}
 	}
 }
 
@@ -72,7 +78,9 @@ func TestJSONValues(t *testing.T) {
 	for _, v := range knownValues {
 		v2 := &SValue{v}
 		b, err := json.Marshal(v2)
-		ut.AssertEqual(t, nil, err)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if isConst(v) {
 			if _, err := strconv.ParseInt(string(b), 10, 32); err != nil {
 				t.Fatalf("%v", err)
@@ -98,11 +106,14 @@ func TestJSONValues(t *testing.T) {
 		} else if isRand(v) && string(b) == "\""+randKey+"\"" {
 			// Ok.
 		} else {
-			ut.AssertEqualf(t, uint8('{'), b[0], "%q", string(b))
+			if c := b[0]; c != uint8('{') {
+				t.Fatalf("Expected '{', got %q", c)
+			}
 		}
 		v2.Value = nil
-		err = json.Unmarshal(b, v2)
-		ut.AssertEqualf(t, nil, err, "%q: %v", b, err)
+		if err = json.Unmarshal(b, v2); err != nil {
+			t.Fatalf("%q: %v", b, err)
+		}
 	}
 }
 
@@ -127,10 +138,16 @@ func TestJSONValuesSpotCheck(t *testing.T) {
 func serializePattern(t *testing.T, p Pattern, expected string) {
 	p2 := &SPattern{p}
 	b, err := json.Marshal(p2)
-	ut.AssertEqual(t, nil, err)
-	ut.AssertEqual(t, expected, string(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := string(b); s != expected {
+		t.Fatalf("%s != %s", s, expected)
+	}
 	p2.Pattern = nil
-	ut.AssertEqual(t, nil, json.Unmarshal(b, p2))
+	if err = json.Unmarshal(b, p2); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func isColorOrFrameOrRainbow(p Pattern) bool {
@@ -147,10 +164,16 @@ func isColorOrFrameOrRainbow(p Pattern) bool {
 func serializeValue(t *testing.T, v Value, expected string) {
 	v2 := &SValue{v}
 	b, err := json.Marshal(v2)
-	ut.AssertEqual(t, nil, err)
-	ut.AssertEqual(t, expected, string(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := string(b); s != expected {
+		t.Fatalf("%s != %s", s, expected)
+	}
 	v2.Value = nil
-	ut.AssertEqual(t, nil, json.Unmarshal(b, v2))
+	if err = json.Unmarshal(b, v2); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func isConst(v Value) bool {

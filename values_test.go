@@ -5,9 +5,8 @@
 package anim1d
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/maruel/ut"
 )
 
 func TestMinMax(t *testing.T) {
@@ -65,7 +64,9 @@ func TestPercent(t *testing.T) {
 		{-6554, 0, 1000, -100},
 	}
 	for i, line := range data {
-		ut.AssertEqualIndex(t, i, line.expected, Percent(line.p).Eval(line.timeMS, line.l))
+		if v := Percent(line.p).Eval(line.timeMS, line.l); v != line.expected {
+			t.Fatalf("%d: Percent(%v).Eval(%v, %v) = %v, expected %v", i, line.p, line.timeMS, line.l, v, line.expected)
+		}
 	}
 }
 
@@ -106,12 +107,18 @@ func TestRand(t *testing.T) {
 
 // Scalers
 
-func TestCurve(t *testing.T) {
+func TestCurve_limits(t *testing.T) {
 	for _, v := range []Curve{Curve(""), Ease, EaseIn, EaseInOut, EaseOut, Direct} {
-		ut.AssertEqual(t, uint16(0), v.Scale(0))
-		ut.AssertEqual(t, uint16(65535), v.Scale(65535))
+		if s := v.Scale(0); s != 0 {
+			t.Fatalf("limit low %d != 0", s)
+		}
+		if s := v.Scale(65535); s != 65535 {
+			t.Fatalf("limit high %d != 65535", s)
+		}
 	}
+}
 
+func TestCurve_values(t *testing.T) {
 	half := uint16(65535 >> 1)
 	data := []struct {
 		t        Curve
@@ -126,7 +133,9 @@ func TestCurve(t *testing.T) {
 		{Direct, half, half},
 	}
 	for i, line := range data {
-		ut.AssertEqualIndex(t, i, line.expected, line.t.Scale(line.i))
+		if v := line.t.Scale(line.i); v != line.expected {
+			t.Fatalf("%d: %v.Scale(%v) = %v, expected %v", i, line.t, line.i, v, line.expected)
+		}
 	}
 }
 
@@ -183,7 +192,9 @@ func TestInterpolation(t *testing.T) {
 	for i, line := range data {
 		out := make(Frame, len(line.expected))
 		line.s.Scale(line.input, out)
-		ut.AssertEqualIndex(t, i, line.expected, out)
+		if !reflect.DeepEqual(out, line.expected) {
+			t.Fatalf("%d: %v != %v", i, out, line.expected)
+		}
 	}
 }
 
