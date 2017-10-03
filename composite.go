@@ -6,6 +6,8 @@
 
 package anim1d
 
+import "github.com/maruel/anim1d/math32"
+
 // Gradient does a gradient between 2 patterns.
 //
 // A good example is using two colors but it can also be animations.
@@ -49,7 +51,7 @@ type Split struct {
 
 // Render implements Pattern.
 func (s *Split) Render(pixels Frame, timeMS uint32) {
-	offset := MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels))
+	offset := math32.MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels))
 	if s.Left.Pattern != nil && offset != 0 {
 		s.Left.Render(pixels[:offset], timeMS)
 	}
@@ -282,8 +284,8 @@ type Crop struct {
 
 // Render implements Pattern.
 func (c *Crop) Render(pixels Frame, timeMS uint32) {
-	b := int(MinMax32(c.Before.Eval(timeMS, len(pixels)), 0, 1000))
-	a := int(MinMax32(c.After.Eval(timeMS, len(pixels)), 0, 1000))
+	b := int(math32.MinMax32(c.Before.Eval(timeMS, len(pixels)), 0, 1000))
+	a := int(math32.MinMax32(c.After.Eval(timeMS, len(pixels)), 0, 1000))
 	// This is slightly wasteful as pixels are drawn just to be ditched.
 	c.buf.reset(len(pixels) + b + a)
 	c.Child.Render(c.buf, timeMS)
@@ -302,8 +304,8 @@ func (s *Subset) Render(pixels Frame, timeMS uint32) {
 	if s.Child.Pattern == nil {
 		return
 	}
-	o := MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels)-1)
-	l := MinMax(int(s.Length.Eval(timeMS, len(pixels))), 0, len(pixels)-1-o)
+	o := math32.MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels)-1)
+	l := math32.MinMax(int(s.Length.Eval(timeMS, len(pixels))), 0, len(pixels)-1-o)
 	s.Child.Render(pixels[o:o+l], timeMS)
 }
 
@@ -316,7 +318,7 @@ type Dim struct {
 // Render implements Pattern.
 func (d *Dim) Render(pixels Frame, timeMS uint32) {
 	d.Child.Render(pixels, timeMS)
-	i := MinMax32(d.Intensity.Eval(timeMS, len(pixels)), 0, 255)
+	i := math32.MinMax32(d.Intensity.Eval(timeMS, len(pixels)), 0, 255)
 	pixels.Dim(uint8(i))
 }
 
@@ -365,7 +367,7 @@ func (s *Scale) Render(pixels Frame, timeMS uint32) {
 			return
 		}
 	}
-	v := MinMax32(s.RatioMilli.Eval(timeMS, len(pixels)), 1, 1000000)
+	v := math32.MinMax32(s.RatioMilli.Eval(timeMS, len(pixels)), 1, 1000000)
 	s.buf.reset((int(v)*len(pixels) + 500) / 1000)
 	s.Child.Render(s.buf, timeMS)
 	s.Interpolation.Scale(s.buf, pixels)

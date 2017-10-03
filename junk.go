@@ -66,7 +66,9 @@ func (n *NightStars) Render(pixels Frame, timeMS uint32) {
 		}
 	}
 
-	r := rand.NewSource(int64((&Rand{}).Eval(timeMS, len(pixels))))
+	i := 0
+	// (&values.Rand{}).Eval(timeMS, len(pixels))
+	r := rand.NewSource(int64(0))
 	copy(pixels, n.stars)
 	for i := range n.stars {
 		j := uint8(r.Int63())
@@ -120,8 +122,8 @@ func (l *Lightning) Render(pixels Frame, timeMS uint32) {
 	left := center - halfWidth
 	right := center + halfWidth
 	width := left - right
-	min := MinMax32(left, 0, int32(len(pixels)-1))
-	max := MinMax32(right, 0, int32(len(pixels)-1))
+	min := math32.MinMax32(left, 0, int32(len(pixels)-1))
+	max := math32.MinMax32(right, 0, int32(len(pixels)-1))
 	b := Bell{}
 	for i := min; i < max; i++ {
 		x := (i - left) * 65535 / width
@@ -157,7 +159,7 @@ func (t *Thunderstorm) Render(pixels Frame, timeMS uint32) {
 		// Calculate all triggers up to now.
 		// Calculate location up to now.
 		// Create one random
-		r := rand.NewSource(int64((&Rand{}).Eval(timeMS)))
+		r := rand.NewSource(int64((&values.Rand{}).Eval(timeMS)))
 		// TODO(maruel): Slight coloring?
 		for i := range pixels {
 			pixels[i] = Color{}

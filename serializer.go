@@ -12,6 +12,18 @@ import (
 	"reflect"
 )
 
+type Type int
+
+const (
+	Int Type = iota
+	Str
+	Dict
+)
+
+type JsonEncoding interface {
+	Type() Type
+}
+
 // jsonUnmarshalDict unmarshals data into a map of interface{} without mangling
 // int64.
 func jsonUnmarshalDict(b []byte) (map[string]interface{}, error) {

@@ -26,7 +26,7 @@ func TestRotate(t *testing.T) {
 	a := Color{10, 10, 10}
 	b := Color{20, 20, 20}
 	c := Color{30, 30, 30}
-	p := &Rotate{Child: SPattern{Frame{a, b, c}}, MovePerHour: MovePerHour{Const(360000)}}
+	p := &Rotate{Child: SPattern{Frame{a, b, c}}, MovePerHour: MovePerHour{values.Const(360000)}}
 	e := []expectation{
 		{0, Frame{a, b, c}},
 		{5, Frame{a, b, c}},
