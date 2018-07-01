@@ -10,6 +10,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,8 +18,9 @@ import (
 
 	"github.com/maruel/anim1d"
 	"periph.io/x/extra/devices/screen"
+	"periph.io/x/periph/conn/display"
+	"periph.io/x/periph/conn/physic"
 	"periph.io/x/periph/conn/spi/spireg"
-	"periph.io/x/periph/devices"
 	"periph.io/x/periph/devices/apa102"
 	"periph.io/x/periph/host"
 )
@@ -28,9 +30,9 @@ func mainImpl() error {
 	fake := flag.Bool("terminal", false, "print the animation at the terminal")
 	spiID := flag.String("spi", "", "SPI port to use")
 	hz := flag.Int("hz", 0, "SPI port speed")
-	numPixels := flag.Int("n", 150, "number of pixels on the strip")
-	intensity := flag.Int("l", 127, "light intensity [1-255]")
-	temperature := flag.Int("t", 5000, "light temperature in °Kelvin [3500-7500]")
+	numPixels := flag.Int("n", apa102.DefaultOpts.NumPixels, "number of pixels on the strip")
+	intensity := flag.Int("l", int(apa102.DefaultOpts.Intensity), "light intensity [1-255]")
+	temperature := flag.Int("t", int(apa102.DefaultOpts.Temperature), "light temperature in °Kelvin [3500-7500]")
 	fps := flag.Int("fps", 30, "frames per second")
 	fileName := flag.String("f", "", "file to load the animation from")
 	raw := flag.String("r", "", "inline serialized animation")
@@ -74,7 +76,7 @@ func mainImpl() error {
 		return errors.New("use one of -f or -r; try -r '\"0101ff\"'")
 	}
 
-	var display devices.Display
+	var display displayWriter
 	if *fake {
 		// intensity and temperature are ignored.
 		display = screen.New(*numPixels)
@@ -91,11 +93,15 @@ func mainImpl() error {
 		}
 		defer s.Close()
 		if *hz != 0 {
-			if err := s.LimitSpeed(int64(*hz)); err != nil {
+			if err := s.LimitSpeed(physic.Frequency(*hz) * physic.Hertz); err != nil {
 				return err
 			}
 		}
-		display, err = apa102.New(s, *numPixels, uint8(*intensity), uint16(*temperature))
+		opts := apa102.DefaultOpts
+		opts.NumPixels = *numPixels
+		opts.Intensity = uint8(*intensity)
+		opts.Temperature = uint16(*temperature)
+		display, err = apa102.New(s, &opts)
 		if err != nil {
 			return err
 		}
@@ -105,7 +111,12 @@ func mainImpl() error {
 	return runLoop(display, pat.Pattern, *fps)
 }
 
-func runLoop(display devices.Display, p anim1d.Pattern, fps int) error {
+type displayWriter interface {
+	display.Drawer
+	io.Writer
+}
+
+func runLoop(display displayWriter, p anim1d.Pattern, fps int) error {
 	// TODO(maruel): Use double-buffering: one goroutine generates the frames,
 	// the other transmits the data.
 	delta := time.Second / time.Duration(fps)
