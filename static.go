@@ -10,6 +10,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
 	"strconv"
 )
 
@@ -78,6 +80,24 @@ func (c *Color) Mix(d Color, gradient uint8) {
 
 func (c *Color) String() string {
 	return fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B)
+}
+
+// ColorModel implements image.Image.
+func (c *Color) ColorModel() color.Model {
+	return color.NRGBAModel
+}
+
+// Bounds implements image.Image.
+func (c *Color) Bounds() image.Rectangle {
+	return image.Rect(0, 0, 1, 1)
+}
+
+// At implements image.Image.
+func (c *Color) At(x, y int) color.Color {
+	if x == 0 && y == 0 {
+		return color.NRGBA{c.R, c.G, c.B, 255}
+	}
+	return color.NRGBA{}
 }
 
 // FromString converts a "#RRGGBB" encoded string to a Color.
@@ -216,6 +236,24 @@ func (f Frame) String() string {
 	return out.String()
 }
 
+// ColorModel implements image.Image.
+func (f Frame) ColorModel() color.Model {
+	return color.NRGBAModel
+}
+
+// Bounds implements image.Image.
+func (f Frame) Bounds() image.Rectangle {
+	return image.Rect(0, 0, len(f), 1)
+}
+
+// At implements image.Image.
+func (f Frame) At(x, y int) color.Color {
+	if x >= 0 && x < len(f) && y == 0 {
+		return f[x].At(0, 0)
+	}
+	return color.NRGBA{}
+}
+
 //
 
 // Rainbow renders rainbow colors.
@@ -293,3 +331,6 @@ func (r *Repeated) Render(pixels Frame, timeMS uint32) {
 		copy(pixels[i:], r.Frame)
 	}
 }
+
+var _ image.Image = &Color{}
+var _ image.Image = Frame{}
