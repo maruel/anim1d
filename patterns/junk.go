@@ -4,12 +4,13 @@
 
 // These are incomplete and will either be removed or fixed.
 
-package anim1d
+package patterns
 
 import (
 	"math/rand"
 	"time"
 
+	"github.com/maruel/anim1d"
 	"github.com/maruel/anim1d/math32"
 )
 
@@ -28,7 +29,7 @@ type Aurore struct {
 }
 
 // Render implements Pattern.
-func (a *Aurore) Render(pixels Frame, timeMS uint32) {
+func (a *Aurore) Render(pixels anim1d.Frame, timeMS uint32) {
 	// TODO(maruel): Redo.
 	y := float32(timeMS) * .01
 	for i := range pixels {
@@ -44,15 +45,15 @@ func (a *Aurore) Render(pixels Frame, timeMS uint32) {
 
 // NightStars is an experimental generator.
 type NightStars struct {
-	C     Color
-	stars Frame
+	C     anim1d.Color
+	stars anim1d.Frame
 }
 
 // Render implements Pattern.
-func (n *NightStars) Render(pixels Frame, timeMS uint32) {
+func (n *NightStars) Render(pixels anim1d.Frame, timeMS uint32) {
 	if len(n.stars) != len(pixels) {
 		r := rand.NewSource(0)
-		n.stars = make(Frame, len(pixels))
+		n.stars = make(anim1d.Frame, len(pixels))
 		for i := range n.stars {
 			j := int32(r.Int63())
 			// Cut off at 25%.
@@ -66,7 +67,7 @@ func (n *NightStars) Render(pixels Frame, timeMS uint32) {
 		}
 	}
 
-	r := rand.NewSource(int64((&Rand{}).Eval(timeMS, len(pixels))))
+	r := rand.NewSource(int64((&anim1d.Rand{}).Eval(timeMS, len(pixels))))
 	copy(pixels, n.stars)
 	for i := range n.stars {
 		j := uint8(r.Int63())
@@ -78,10 +79,10 @@ func (n *NightStars) Render(pixels Frame, timeMS uint32) {
 
 // Lightning is an experimental generator.
 type Lightning struct {
-	Center    SValue // offset of the center, from the left
-	HalfWidth SValue // in pixels
-	Intensity int    // the maximum intensity
-	StartMS   SValue // when it started
+	Center    anim1d.SValue // offset of the center, from the left
+	HalfWidth anim1d.SValue // in pixels
+	Intensity int           // the maximum intensity
+	StartMS   anim1d.SValue // when it started
 }
 
 var lightningCycle = []struct {
@@ -102,7 +103,7 @@ var lightningCycle = []struct {
 }
 
 // Render implements Pattern.
-func (l *Lightning) Render(pixels Frame, timeMS uint32) {
+func (l *Lightning) Render(pixels anim1d.Frame, timeMS uint32) {
 	// Will fail after 25 days.
 	offset := timeMS - uint32(l.StartMS.Eval(timeMS, len(pixels)))
 	intensity := uint8(0)
@@ -120,12 +121,12 @@ func (l *Lightning) Render(pixels Frame, timeMS uint32) {
 	left := center - halfWidth
 	right := center + halfWidth
 	width := left - right
-	min := MinMax32(left, 0, int32(len(pixels)-1))
-	max := MinMax32(right, 0, int32(len(pixels)-1))
-	b := Bell{}
+	min := math32.MinMax32(left, 0, int32(len(pixels)-1))
+	max := math32.MinMax32(right, 0, int32(len(pixels)-1))
+	b := anim1d.Bell{}
 	for i := min; i < max; i++ {
 		x := (i - left) * 65535 / width
-		pixels[i] = Color{intensity, intensity, intensity}
+		pixels[i] = anim1d.Color{intensity, intensity, intensity}
 		pixels[i].Dim(uint8(b.Scale(uint16(x)) >> 8))
 	}
 }
@@ -138,7 +139,7 @@ type Thunderstorm struct {
 }
 
 // Render implements Pattern.
-func (t *Thunderstorm) Render(pixels Frame, timeMS uint32) {
+func (t *Thunderstorm) Render(pixels anim1d.Frame, timeMS uint32) {
 	/*
 		//freq := 3
 		if t.current == nil {
@@ -147,20 +148,20 @@ func (t *Thunderstorm) Render(pixels Frame, timeMS uint32) {
 			}
 			t.current = []Lightning{}
 			r := rand.NewSource(0)
-			t.nextMS = uint32((&Bell{}).Eval(uint16(r.Int63())))
+			t.nextMS = uint32((&anim1d.Bell{}).Eval(uint16(r.Int63())))
 		}
 		for timeMS > t.nextMS {
 			t.current = append(t.current, Lightning{})
 			r := rand.NewSource(0)
-			t.nextMS = uint32((&Bell{}).Eval(uint16(r.Int63()))) + t.nextMS
+			t.nextMS = uint32((&anim1d.Bell{}).Eval(uint16(r.Int63()))) + t.nextMS
 		}
 		// Calculate all triggers up to now.
 		// Calculate location up to now.
 		// Create one random
-		r := rand.NewSource(int64((&Rand{}).Eval(timeMS)))
+		r := rand.NewSource(int64((&anim1d.Rand{}).Eval(timeMS)))
 		// TODO(maruel): Slight coloring?
 		for i := range pixels {
-			pixels[i] = Color{}
+			pixels[i] = anim1d.Color{}
 		}
 	*/
 }
@@ -175,7 +176,7 @@ type WishingStar struct {
 }
 
 // Render implements Pattern.
-func (w *WishingStar) Render(pixels Frame, timeMS uint32) {
+func (w *WishingStar) Render(pixels anim1d.Frame, timeMS uint32) {
 	/*
 		// Create a deterministic replay by using the current number of
 		// the wishing star as the seed for the current flow. Make it independent of

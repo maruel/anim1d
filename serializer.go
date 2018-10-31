@@ -12,6 +12,27 @@ import (
 	"reflect"
 )
 
+// Type defines the JSON encoded types.
+type Type int
+
+const (
+	Dict Type = iota
+	Str
+	Int
+)
+
+// JsonEncoding defines how a type should be encoded as JSON.
+type JsonEncoding interface {
+	json.Marshaler
+	json.Unmarshaler
+	Type() Type
+}
+
+// FromStringer is for types which support deserializing from a string.
+type FromStringer interface {
+	FromString(s string) error
+}
+
 // jsonUnmarshalDict unmarshals data into a map of interface{} without mangling
 // int64.
 func jsonUnmarshalDict(b []byte) (map[string]interface{}, error) {
@@ -85,7 +106,7 @@ func jsonUnmarshalWithType(b []byte, lookup map[string]reflect.Type, null interf
 func parseDictToType(name string, b []byte, lookup map[string]reflect.Type) (interface{}, error) {
 	t, ok := lookup[name]
 	if !ok {
-		return nil, fmt.Errorf("type %#v not found", name)
+		return nil, fmt.Errorf("type %q not found", name)
 	}
 	v := reflect.New(t).Interface()
 	if err := json.Unmarshal(b, v); err != nil {

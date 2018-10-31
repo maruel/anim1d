@@ -78,7 +78,7 @@ func (t *ThumbnailsCache) GIF(serialized []byte) ([]byte, error) {
 	for frame := 0; frame < nbImg; frame++ {
 		since := uint32(1000 * frame / t.ThumbnailHz)
 		pat.Render(pixels[frame&1], since)
-		if frame > 0 && pixels[0].isEqual(pixels[1]) {
+		if frame > 0 && pixels[0].IsEqual(pixels[1]) {
 			// Skip a frame completely if its pixels didn't change at all from the
 			// previous frame.
 			g.Delay[len(g.Delay)-1] += frameDuration
@@ -96,9 +96,9 @@ func (t *ThumbnailsCache) GIF(serialized []byte) ([]byte, error) {
 			img.Pix[j] = uint8(pal.Index(c))
 		}
 	}
-	b := &bytes.Buffer{}
-	if err := gif.EncodeAll(b, g); err != nil {
-		panic(err)
+	b := bytes.Buffer{}
+	if err := gif.EncodeAll(&b, g); err != nil {
+		return nil, err
 	}
 	out := b.Bytes()
 

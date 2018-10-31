@@ -11,69 +11,6 @@ import (
 	"testing"
 )
 
-func TestNilObject(t *testing.T) {
-	c := Frame{}
-	d := Frame{{}}
-	for _, p := range knownPatterns {
-		p.Render(nil, 0)
-		p.Render(c, 0)
-		p.Render(d, 0)
-	}
-}
-
-func TestJSONPatterns(t *testing.T) {
-	for _, p := range knownPatterns {
-		p2 := &SPattern{p}
-		b, err := json.Marshal(p2)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if isColorOrFrameOrRainbow(p) {
-			if c := b[0]; c != uint8('"') {
-				t.Fatalf("Expected '\"', got %q", c)
-			}
-		} else {
-			if c := b[0]; c != uint8('{') {
-				t.Fatalf("Expected '{', got %q", c)
-			}
-		}
-		// Must not crash on nil members and empty frame.
-		p2.Render(Frame{}, 0)
-		p2.Pattern = nil
-		if err := json.Unmarshal(b, p2); err != nil {
-			t.Fatalf("%s, %vv", b, err)
-		}
-	}
-}
-
-func TestJSONPatternsSpotCheck(t *testing.T) {
-	// Increase coverage of edge cases.
-	serializePattern(t, &Color{1, 2, 3}, `"#010203"`)
-	serializePattern(t, &Frame{}, `"L"`)
-	serializePattern(t, &Frame{{1, 2, 3}, {4, 5, 6}}, `"L010203040506"`)
-	serializePattern(t, &Rainbow{}, `"Rainbow"`)
-	serializePattern(t, &PingPong{}, `{"Child":{},"MovePerHour":0,"_type":"PingPong"}`)
-	serializePattern(t, &Chronometer{}, `{"Child":{},"_type":"Chronometer"}`)
-
-	// Create one more complex. Assert that int64 is not mangled.
-	p := &Transition{
-		Before: SPattern{
-			&Transition{
-				After:        SPattern{&Color{255, 255, 255}},
-				OffsetMS:     600000,
-				TransitionMS: 600000,
-				Curve:        Direct,
-			},
-		},
-		After:        SPattern{&Color{}},
-		OffsetMS:     30 * 60000,
-		TransitionMS: 600000,
-		Curve:        Direct,
-	}
-	expected := `{"After":"#000000","Before":{"After":"#ffffff","Before":{},"Curve":"direct","OffsetMS":600000,"TransitionMS":600000,"_type":"Transition"},"Curve":"direct","OffsetMS":1800000,"TransitionMS":600000,"_type":"Transition"}`
-	serializePattern(t, p, expected)
-}
-
 func TestJSONValues(t *testing.T) {
 	for _, v := range knownValues {
 		v2 := &SValue{v}
@@ -135,32 +72,6 @@ func TestJSONValuesSpotCheck(t *testing.T) {
 
 //
 
-func serializePattern(t *testing.T, p Pattern, expected string) {
-	p2 := &SPattern{p}
-	b, err := json.Marshal(p2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if s := string(b); s != expected {
-		t.Fatalf("%s != %s", s, expected)
-	}
-	p2.Pattern = nil
-	if err = json.Unmarshal(b, p2); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func isColorOrFrameOrRainbow(p Pattern) bool {
-	if _, ok := p.(*Color); ok {
-		return ok
-	}
-	if _, ok := p.(*Frame); ok {
-		return ok
-	}
-	_, ok := p.(*Rainbow)
-	return ok
-}
-
 func serializeValue(t *testing.T, v Value, expected string) {
 	v2 := &SValue{v}
 	b, err := json.Marshal(v2)
@@ -199,13 +110,4 @@ func isOpMod(v Value) bool {
 func isRand(v Value) bool {
 	_, ok := v.(*Rand)
 	return ok
-}
-
-// marshalPattern is a shorthand to JSON encode a pattern.
-func marshalPattern(p Pattern) []byte {
-	b, err := json.Marshal(&SPattern{p})
-	if err != nil {
-		panic(err)
-	}
-	return b
 }

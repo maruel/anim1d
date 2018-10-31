@@ -9,30 +9,9 @@ package anim1d
 import (
 	"math/rand"
 
+	"github.com/maruel/anim1d/math32"
 	"github.com/maruel/fastbezier"
 )
-
-// MinMax limits the value between a min and a max
-func MinMax(v, min, max int) int {
-	if v < min {
-		return min
-	}
-	if v > max {
-		return max
-	}
-	return v
-}
-
-// MinMax32 limits the value between a min and a max
-func MinMax32(v, min, max int32) int32 {
-	if v < min {
-		return min
-	}
-	if v > max {
-		return max
-	}
-	return v
-}
 
 // Values
 
@@ -120,7 +99,7 @@ type MovePerHour SValue
 func (m *MovePerHour) Eval(timeMS uint32, l int, cycle int) int {
 	s := SValue(*m)
 	// Prevent overflows.
-	v := MinMax32(s.Eval(timeMS, l), -3600000, 3600000)
+	v := math32.MinMax32(s.Eval(timeMS, l), -3600000, 3600000)
 	// TODO(maruel): Reduce the amount of int64 code in there yet keeping it from
 	// overflowing.
 	// offset ranges [0, 3599999]
@@ -249,6 +228,7 @@ func (c Curve) Scale8(intensity uint16) uint8 {
 	return uint8(c.Scale(intensity) >> 8)
 }
 
+/*
 // Interpolation specifies a way to scales a pixel strip.
 type Interpolation string
 
@@ -300,6 +280,7 @@ func (i Interpolation) Scale(in, out Frame) {
 		}
 	}
 }
+*/
 
 //
 

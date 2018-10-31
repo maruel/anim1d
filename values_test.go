@@ -10,30 +10,6 @@ import (
 	"testing"
 )
 
-func TestMinMax(t *testing.T) {
-	if MinMax(2, 0, 3) != 2 {
-		t.Fail()
-	}
-	if MinMax(-2, 0, 3) != 0 {
-		t.Fail()
-	}
-	if MinMax(4, 0, 3) != 3 {
-		t.Fail()
-	}
-}
-
-func TestMinMax32(t *testing.T) {
-	if MinMax32(2, 0, 3) != 2 {
-		t.Fail()
-	}
-	if MinMax32(-2, 0, 3) != 0 {
-		t.Fail()
-	}
-	if MinMax32(4, 0, 3) != 3 {
-		t.Fail()
-	}
-}
-
 // Values
 
 func TestSValue_Eval(t *testing.T) {
@@ -108,6 +84,26 @@ func TestRand(t *testing.T) {
 
 // Scalers
 
+func TestBell_Scale(t *testing.T) {
+	half := uint16(65535 >> 1)
+	data := []struct {
+		i        uint16
+		expected uint16
+	}{
+		{0, 0},
+		{0x1000, 2093},
+		{half, 0xffff},
+		{0xefff, 2093},
+		{0xffff, 0},
+	}
+	b := Bell{}
+	for i, line := range data {
+		if v := b.Scale(line.i); v != line.expected {
+			t.Fatalf("%d: Bell.Scale(%v) = %v, expected %v", i, line.i, v, line.expected)
+		}
+	}
+}
+
 func TestCurve_limits(t *testing.T) {
 	for _, v := range []Curve{Curve(""), Ease, EaseIn, EaseInOut, EaseOut, Direct} {
 		if s := v.Scale(0); s != 0 {
@@ -119,7 +115,7 @@ func TestCurve_limits(t *testing.T) {
 	}
 }
 
-func TestCurve_values(t *testing.T) {
+func TestCurve_Scale(t *testing.T) {
 	half := uint16(65535 >> 1)
 	data := []struct {
 		t        Curve
@@ -131,11 +127,27 @@ func TestCurve_values(t *testing.T) {
 		{EaseInOut, half, 0x7ffe},
 		{EaseOut, half, 0xaf1d},
 		{Curve(""), half, 0xaf1d},
+		{Curve("bleh"), half, 0xaf1d},
 		{Direct, half, half},
+		{StepStart, 0, 0},
+		{StepStart, 255, 0},
+		{StepStart, 256, 0xffff},
+		{StepStart, 0xffff, 0xffff},
+		{StepMiddle, 0, 0},
+		{StepMiddle, 0x7fff, 0},
+		{StepMiddle, 0x8000, 0xffff},
+		{StepMiddle, 0xffff, 0xffff},
+		{StepEnd, 0, 0},
+		{StepEnd, 0xfefe, 0},
+		{StepEnd, 0xfeff, 0xffff},
+		{StepEnd, 0xffff, 0xffff},
 	}
 	for i, line := range data {
 		if v := line.t.Scale(line.i); v != line.expected {
 			t.Fatalf("%d: %v.Scale(%v) = %v, expected %v", i, line.t, line.i, v, line.expected)
+		}
+		if v := line.t.Scale8(line.i); v != uint8(line.expected>>8) {
+			t.Fatalf("%d: %v.Scale8(%v) = %v, expected %v", i, line.t, line.i, v, line.expected>>8)
 		}
 	}
 }
@@ -231,6 +243,7 @@ func TestMovePerHour(t *testing.T) {
 		{3600000, 2, 10, 2},
 		{2 * 3600000, 1, 10, 1},
 		{2 * 3600000, 2, 10, 2},
+		{2 * 3600000, 2, 0, 2},
 	}
 	for i, line := range data {
 		m := MovePerHour{Const(line.mps)}

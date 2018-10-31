@@ -186,8 +186,8 @@ func (f Frame) ToRGB(b []byte) {
 	}
 }
 
-// reset() always resets the buffer to black.
-func (f *Frame) reset(l int) {
+// Reset() always Resets the buffer to black to the exact length requested.
+func (f *Frame) Reset(l int) {
 	if len(*f) != l {
 		*f = make(Frame, l)
 	} else {
@@ -198,7 +198,8 @@ func (f *Frame) reset(l int) {
 	}
 }
 
-func (f Frame) isEqual(rhs Frame) bool {
+// IsEqual returns true if two Frame are equal.
+func (f Frame) IsEqual(rhs Frame) bool {
 	if len(f) != len(rhs) {
 		return false
 	}

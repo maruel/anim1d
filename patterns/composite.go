@@ -2,9 +2,14 @@
 // Use of this source code is governed under the Apache License, Version 2.0
 // that can be found in the LICENSE file.
 
-// composite is all the patterns that are composed of other patterns.
+// mixers is all the patterns that are constructions of other patterns.
 
-package anim1d
+package patterns
+
+import (
+	"github.com/maruel/anim1d"
+	"github.com/maruel/anim1d/math32"
+)
 
 // Gradient does a gradient between 2 patterns.
 //
@@ -12,19 +17,19 @@ package anim1d
 //
 // TODO(maruel): Support N colors at M positions.
 type Gradient struct {
-	Left  SPattern
-	Right SPattern
-	Curve Curve
-	buf   Frame
+	Left  anim1d.SPattern
+	Right anim1d.SPattern
+	Curve anim1d.Curve
+	buf   anim1d.Frame
 }
 
 // Render implements Pattern.
-func (g *Gradient) Render(pixels Frame, timeMS uint32) {
+func (g *Gradient) Render(pixels anim1d.Frame, timeMS uint32) {
 	l := len(pixels)
 	if l == 0 {
 		return
 	}
-	g.buf.reset(l)
+	g.buf.Reset(l)
 	g.Left.Render(pixels, timeMS)
 	g.Right.Render(g.buf, timeMS)
 	if l == 1 {
@@ -42,14 +47,14 @@ func (g *Gradient) Render(pixels Frame, timeMS uint32) {
 //
 // Unlike gradient, this create 2 logical independent subsets.
 type Split struct {
-	Left   SPattern
-	Right  SPattern
-	Offset SValue // Point to split between both sides.
+	Left   anim1d.SPattern
+	Right  anim1d.SPattern
+	Offset anim1d.SValue // Point to split between both sides.
 }
 
 // Render implements Pattern.
-func (s *Split) Render(pixels Frame, timeMS uint32) {
-	offset := MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels))
+func (s *Split) Render(pixels anim1d.Frame, timeMS uint32) {
+	offset := math32.MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels))
 	if s.Left.Pattern != nil && offset != 0 {
 		s.Left.Render(pixels[:offset], timeMS)
 	}
@@ -62,16 +67,16 @@ func (s *Split) Render(pixels Frame, timeMS uint32) {
 //
 // In gets timeMS that is subtracted by OffsetMS.
 type Transition struct {
-	Before       SPattern // Old pattern that is disappearing
-	After        SPattern // New pattern to show
-	OffsetMS     uint32   // Offset at which the transiton from Before->In starts
-	TransitionMS uint32   // Duration of the transition while both are rendered
-	Curve        Curve    // Type of transition, defaults to EaseOut if not set
-	buf          Frame
+	Before       anim1d.SPattern // Old pattern that is disappearing
+	After        anim1d.SPattern // New pattern to show
+	OffsetMS     uint32          // Offset at which the transiton from Before->In starts
+	TransitionMS uint32          // Duration of the transition while both are rendered
+	Curve        anim1d.Curve    // Type of transition, defaults to EaseOut if not set
+	buf          anim1d.Frame
 }
 
 // Render implements Pattern.
-func (t *Transition) Render(pixels Frame, timeMS uint32) {
+func (t *Transition) Render(pixels anim1d.Frame, timeMS uint32) {
 	if timeMS <= t.OffsetMS {
 		// Before transition.
 		t.Before.Render(pixels, timeMS)
@@ -83,7 +88,7 @@ func (t *Transition) Render(pixels Frame, timeMS uint32) {
 		t.buf = nil
 		return
 	}
-	t.buf.reset(len(pixels))
+	t.buf.Reset(len(pixels))
 
 	// TODO(maruel): Add lateral animation and others.
 	t.Before.Render(t.buf, timeMS)
@@ -98,15 +103,15 @@ func (t *Transition) Render(pixels Frame, timeMS uint32) {
 // behind.
 // TODO(maruel): Add lateral transition and others.
 type Loop struct {
-	Patterns     []SPattern
-	ShowMS       uint32 // Duration for each pattern to be shown as pure
-	TransitionMS uint32 // Duration of the transition between two patterns, can be 0
-	Curve        Curve  // Type of transition, defaults to EaseOut if not set
-	buf          Frame
+	Patterns     []anim1d.SPattern
+	ShowMS       uint32       // Duration for each pattern to be shown as pure
+	TransitionMS uint32       // Duration of the transition between two patterns, can be 0
+	Curve        anim1d.Curve // Type of transition, defaults to EaseOut if not set
+	buf          anim1d.Frame
 }
 
 // Render implements Pattern.
-func (l *Loop) Render(pixels Frame, timeMS uint32) {
+func (l *Loop) Render(pixels anim1d.Frame, timeMS uint32) {
 	lp := uint32(len(l.Patterns))
 	if lp == 0 {
 		return
@@ -128,7 +133,7 @@ func (l *Loop) Render(pixels Frame, timeMS uint32) {
 	}
 
 	// Transition.
-	l.buf.reset(len(pixels))
+	l.buf.Reset(len(pixels))
 	b := l.Patterns[(index+1)%lp]
 	b.Render(l.buf, timeMS)
 	offset -= l.ShowMS
@@ -144,15 +149,15 @@ func (l *Loop) Render(pixels Frame, timeMS uint32) {
 //
 // Use 5x oversampling with Scale{} to create smoother animation.
 type Rotate struct {
-	Child       SPattern
-	MovePerHour MovePerHour // Expressed in number of light jumps per hour.
-	buf         Frame
+	Child       anim1d.SPattern
+	MovePerHour anim1d.MovePerHour // Expressed in number of light jumps per hour.
+	buf         anim1d.Frame
 }
 
 // Render implements Pattern.
-func (r *Rotate) Render(pixels Frame, timeMS uint32) {
+func (r *Rotate) Render(pixels anim1d.Frame, timeMS uint32) {
 	l := len(pixels)
-	r.buf.reset(l)
+	r.buf.Reset(l)
 	r.Child.Render(r.buf, timeMS)
 	offset := r.MovePerHour.Eval(timeMS, len(pixels), l)
 	if offset < 0 {
@@ -168,17 +173,17 @@ func (r *Rotate) Render(pixels Frame, timeMS uint32) {
 //
 // Child has 4 pixels used in this order: [default, second, minute, hour].
 type Chronometer struct {
-	Child SPattern
-	buf   Frame
+	Child anim1d.SPattern
+	buf   anim1d.Frame
 }
 
 // Render implements Pattern.
-func (r *Chronometer) Render(pixels Frame, timeMS uint32) {
+func (r *Chronometer) Render(pixels anim1d.Frame, timeMS uint32) {
 	l := uint32(len(pixels))
 	if l == 0 {
 		return
 	}
-	r.buf.reset(4)
+	r.buf.Reset(4)
 	r.Child.Render(r.buf, timeMS)
 
 	seconds := timeMS / 1000
@@ -207,28 +212,28 @@ func (r *Chronometer) Render(pixels Frame, timeMS uint32) {
 // the other.
 //
 // Can be used for a ball, a water wave or K2000 (Knight Rider) style light.
-// The trail can be a Frame or a dynamic pattern.
+// The trail can be a anim1d.Frame or a dynamic pattern.
 //
 // To get smoothed movement, use Scale{} with a 5x factor or so.
 // TODO(maruel): That's a bit inefficient, enable Interpolation here.
 type PingPong struct {
-	Child       SPattern    // [0] is the front pixel so the pixels are effectively drawn in reverse order
-	MovePerHour MovePerHour // Expressed in number of light jumps per hour
-	buf         Frame
+	Child       anim1d.SPattern    // [0] is the front pixel so the pixels are effectively drawn in reverse order
+	MovePerHour anim1d.MovePerHour // Expressed in number of light jumps per hour
+	buf         anim1d.Frame
 }
 
 // Render implements Pattern.
-func (p *PingPong) Render(pixels Frame, timeMS uint32) {
+func (p *PingPong) Render(pixels anim1d.Frame, timeMS uint32) {
 	if len(pixels) == 0 {
 		return
 	}
-	p.buf.reset(len(pixels)*2 - 1)
+	p.buf.Reset(len(pixels)*2 - 1)
 	p.Child.Render(p.buf, timeMS)
 	// The last point of each extremity is only lit on one tick but every other
 	// points are lit twice during a full cycle. This means the full cycle is
 	// 2*(len(pixels)-1). For a 3 pixels line, the cycle is: x00, 0x0, 00x, 0x0.
 	//
-	// For Child being Frame "01234567":
+	// For Child being anim1d.Frame "01234567":
 	//   move == 0  -> "01234567"
 	//   move == 2  -> "21056789"
 	//   move == 5  -> "543210ab"
@@ -274,61 +279,62 @@ func (p *PingPong) Render(pixels Frame, timeMS uint32) {
 
 // Crop skips the beginning and the end of the source.
 type Crop struct {
-	Child  SPattern
-	Before SValue // Starting pixels to skip
-	After  SValue // Ending pixels to skip
-	buf    Frame
+	Child  anim1d.SPattern
+	Before anim1d.SValue // Starting pixels to skip
+	After  anim1d.SValue // Ending pixels to skip
+	buf    anim1d.Frame
 }
 
 // Render implements Pattern.
-func (c *Crop) Render(pixels Frame, timeMS uint32) {
-	b := int(MinMax32(c.Before.Eval(timeMS, len(pixels)), 0, 1000))
-	a := int(MinMax32(c.After.Eval(timeMS, len(pixels)), 0, 1000))
+func (c *Crop) Render(pixels anim1d.Frame, timeMS uint32) {
+	b := int(math32.MinMax32(c.Before.Eval(timeMS, len(pixels)), 0, 1000))
+	a := int(math32.MinMax32(c.After.Eval(timeMS, len(pixels)), 0, 1000))
 	// This is slightly wasteful as pixels are drawn just to be ditched.
-	c.buf.reset(len(pixels) + b + a)
+	c.buf.Reset(len(pixels) + b + a)
 	c.Child.Render(c.buf, timeMS)
 	copy(pixels, c.buf[b:])
 }
 
 // Subset skips the beginning and the end of the destination.
 type Subset struct {
-	Child  SPattern
-	Offset SValue // Starting pixels to skip
-	Length SValue // Length of the pixels to carry over
+	Child  anim1d.SPattern
+	Offset anim1d.SValue // Starting pixels to skip
+	Length anim1d.SValue // Length of the pixels to carry over
 }
 
 // Render implements Pattern.
-func (s *Subset) Render(pixels Frame, timeMS uint32) {
+func (s *Subset) Render(pixels anim1d.Frame, timeMS uint32) {
 	if s.Child.Pattern == nil {
 		return
 	}
-	o := MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels)-1)
-	l := MinMax(int(s.Length.Eval(timeMS, len(pixels))), 0, len(pixels)-1-o)
+	o := math32.MinMax(int(s.Offset.Eval(timeMS, len(pixels))), 0, len(pixels)-1)
+	l := math32.MinMax(int(s.Length.Eval(timeMS, len(pixels))), 0, len(pixels)-1-o)
 	s.Child.Render(pixels[o:o+l], timeMS)
 }
 
 // Dim is a filter that dim the intensity of a buffer.
 type Dim struct {
-	Child     SPattern //
-	Intensity SValue   // 0 is transparent, 255 is fully opaque with original colors.
+	Child     anim1d.SPattern //
+	Intensity anim1d.SValue   // 0 is transparent, 255 is fully opaque with original colors.
 }
 
 // Render implements Pattern.
-func (d *Dim) Render(pixels Frame, timeMS uint32) {
+func (d *Dim) Render(pixels anim1d.Frame, timeMS uint32) {
 	d.Child.Render(pixels, timeMS)
-	i := MinMax32(d.Intensity.Eval(timeMS, len(pixels)), 0, 255)
+	i := math32.MinMax32(d.Intensity.Eval(timeMS, len(pixels)), 0, 255)
 	pixels.Dim(uint8(i))
 }
 
 // Add is a generic mixer that merges the output from multiple patterns with
 // saturation.
 type Add struct {
-	Patterns []SPattern // It should be a list of Dim{} with their corresponding weight.
-	buf      Frame      //
+	Patterns []anim1d.SPattern // It should be a list of Dim{} with their corresponding weight.
+	buf      anim1d.Frame      //
 }
 
 // Render implements Pattern.
-func (a *Add) Render(pixels Frame, timeMS uint32) {
+func (a *Add) Render(pixels anim1d.Frame, timeMS uint32) {
+	a.buf.Reset(len(pixels))
 	// Draw and merge each pattern.
 	a.buf.reset(len(pixels))
 	for i := range pixels {
@@ -345,43 +351,28 @@ func (a *Add) Render(pixels Frame, timeMS uint32) {
 // This is useful to create smoother horizontal movement animation or to scale
 // up/down images.
 type Scale struct {
-	Child SPattern
+	Child anim1d.SPattern
 	// Defaults to Linear
 	Interpolation Interpolation
 	// A buffer of this len(buffer)*RatioMilli/1000 will be provided to Child and
 	// will be scaled; 500 means smaller, 2000 is larger.
 	//
-	// Can be set to 0 when Child is a Frame. In this case it is stretched to the
-	// strip size.
-	RatioMilli SValue
-	buf        Frame
+	// Can be set to 0 when Child is a anim1d.Frame. In this case it is stretched
+	// to the strip size.
+	RatioMilli anim1d.SValue
+	buf        anim1d.Frame
 }
 
 // Render implements Pattern.
-func (s *Scale) Render(pixels Frame, timeMS uint32) {
-	if f, ok := s.Child.Pattern.(Frame); ok {
+func (s *Scale) Render(pixels anim1d.Frame, timeMS uint32) {
+	if f, ok := s.Child.Pattern.(anim1d.Frame); ok {
 		if s.RatioMilli.Eval(timeMS, len(pixels)) == 0 {
 			s.Interpolation.Scale(f, pixels)
 			return
 		}
 	}
-	v := MinMax32(s.RatioMilli.Eval(timeMS, len(pixels)), 1, 1000000)
-	s.buf.reset((int(v)*len(pixels) + 500) / 1000)
+	v := math32.MinMax32(s.RatioMilli.Eval(timeMS, len(pixels)), 1, 1000000)
+	s.buf.Reset((int(v)*len(pixels) + 500) / 1000)
 	s.Child.Render(s.buf, timeMS)
 	s.Interpolation.Scale(s.buf, pixels)
-}
-
-// Repeated repeats a Frame to fill the pixels.
-type Repeated struct {
-	Frame Frame
-}
-
-// Render implements Pattern.
-func (r *Repeated) Render(pixels Frame, timeMS uint32) {
-	if len(pixels) == 0 || len(r.Frame) == 0 {
-		return
-	}
-	for i := 0; i < len(pixels); i += len(r.Frame) {
-		copy(pixels[i:], r.Frame)
-	}
 }
