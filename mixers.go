@@ -330,8 +330,11 @@ type Add struct {
 // Render implements Pattern.
 func (a *Add) Render(pixels Frame, timeMS uint32) {
 	// Draw and merge each pattern.
+	a.buf.reset(len(pixels))
+	for i := range pixels {
+		pixels[i] = Color{}
+	}
 	for i := range a.Patterns {
-		a.buf.reset(len(pixels))
 		a.Patterns[i].Render(a.buf, timeMS)
 		pixels.Add(a.buf)
 	}
