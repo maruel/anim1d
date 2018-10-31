@@ -2,7 +2,7 @@
 // Use of this source code is governed under the Apache License, Version 2.0
 // that can be found in the LICENSE file.
 
-// mixers is all the patterns that are constructions of other patterns.
+// composite is all the patterns that are composed of other patterns.
 
 package anim1d
 
@@ -369,4 +369,19 @@ func (s *Scale) Render(pixels Frame, timeMS uint32) {
 	s.buf.reset((int(v)*len(pixels) + 500) / 1000)
 	s.Child.Render(s.buf, timeMS)
 	s.Interpolation.Scale(s.buf, pixels)
+}
+
+// Repeated repeats a Frame to fill the pixels.
+type Repeated struct {
+	Frame Frame
+}
+
+// Render implements Pattern.
+func (r *Repeated) Render(pixels Frame, timeMS uint32) {
+	if len(pixels) == 0 || len(r.Frame) == 0 {
+		return
+	}
+	for i := 0; i < len(pixels); i += len(r.Frame) {
+		copy(pixels[i:], r.Frame)
+	}
 }

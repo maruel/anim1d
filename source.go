@@ -2,7 +2,7 @@
 // Use of this source code is governed under the Apache License, Version 2.0
 // that can be found in the LICENSE file.
 
-// static is for patterns that do not change over time.
+// source is for patterns that do not depend on other Pattern.
 
 package anim1d
 
@@ -260,6 +260,7 @@ func (f Frame) At(x, y int) color.Color {
 
 // Rainbow renders rainbow colors.
 type Rainbow struct {
+	// cached buffer for performance.
 	buf Frame
 }
 
@@ -317,21 +318,6 @@ func waveLength2RGB(w int) (c Color) {
 	default:
 	}
 	return
-}
-
-// Repeated repeats a Frame to fill the pixels.
-type Repeated struct {
-	Frame Frame
-}
-
-// Render implements Pattern.
-func (r *Repeated) Render(pixels Frame, timeMS uint32) {
-	if len(pixels) == 0 || len(r.Frame) == 0 {
-		return
-	}
-	for i := 0; i < len(pixels); i += len(r.Frame) {
-		copy(pixels[i:], r.Frame)
-	}
 }
 
 var _ image.Image = &Color{}
