@@ -13,6 +13,8 @@ import (
 	"image"
 	"image/color"
 	"strconv"
+
+	"github.com/maruel/anim1d/math32"
 )
 
 // Color shows a single color on all lights. It knows how to renders itself
@@ -269,10 +271,10 @@ func (r *Rainbow) Render(pixels Frame, timeMS uint32) {
 		const end = 781
 		const delta = end - start
 		// TODO(maruel): Use integer arithmetic.
-		scale := logn(2)
+		scale := math32.Logn(2)
 		step := 1. / float32(len(pixels))
 		for i := range pixels {
-			j := log1p(float32(len(pixels)-i-1)*step) / scale
+			j := math32.Log1p(float32(len(pixels)-i-1)*step) / scale
 			r.buf[i] = waveLength2RGB(int(start + delta*(1-j)))
 		}
 	}

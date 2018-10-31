@@ -9,6 +9,8 @@ package anim1d
 import (
 	"math/rand"
 	"time"
+
+	"github.com/maruel/anim1d/math32"
 )
 
 // TODO(maruel): Create NightSky with:
@@ -31,8 +33,8 @@ func (a *Aurore) Render(pixels Frame, timeMS uint32) {
 	y := float32(timeMS) * .01
 	for i := range pixels {
 		x := float32(i)
-		//a := 32 + 31*sin(x/(37.+15*cos(y/74)))*cos(y/(31+11*sin(x/57)))
-		b := (128 + 127*(sin(hypot(200-y, 320-x)/16))) * (0.5 + 0.5*sin(y*0.1))
+		//a := 32 + 31*math32.Sin(x/(37.+15*cos(y/74)))*cos(y/(31+11*math32.Sin(x/57)))
+		b := (128 + 127*(math32.Sin(math32.Hypot(200-y, 320-x)/16))) * (0.5 + 0.5*math32.Sin(y*0.1))
 		pixels[i].R = 0
 		//pixels[i].G = uint8(a + b)
 		pixels[i].G = uint8(b)
