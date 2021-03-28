@@ -222,8 +222,6 @@ func (c Curve) Scale(intensity uint16) uint16 {
 	switch c {
 	case Ease, EaseIn, EaseInOut, EaseOut, "":
 		return lutCache[c].Eval(intensity)
-	default:
-		return lutCache[""].Eval(intensity)
 	case Direct:
 		return intensity
 	case StepStart:
@@ -241,6 +239,8 @@ func (c Curve) Scale(intensity uint16) uint16 {
 			return 65535
 		}
 		return 0
+	default:
+		return lutCache[""].Eval(intensity)
 	}
 }
 
@@ -268,6 +268,19 @@ func (i Interpolation) Scale(in, out Frame) {
 		return
 	}
 	switch i {
+	case Linear:
+		for i := range out {
+			x := (i*li + li/2) / lo
+			c := in[x]
+			if x < li-1 {
+				gradient := uint8(127)
+				c.Mix(in[x+1], gradient)
+			}
+			out[i] = c
+			//a := in[(i*li+li/2)/lo]
+			//b := in[(i*li+li/2)/lo]
+			//out[i] = (a + b) / 2
+		}
 	case NearestSkip:
 		if li < lo {
 			// Do not touch skipped pixels.
@@ -285,22 +298,9 @@ func (i Interpolation) Scale(in, out Frame) {
 		for i := range out {
 			out[i] = in[(i*li+li/2)/lo]
 		}
-	case Linear:
-		for i := range out {
-			x := (i*li + li/2) / lo
-			c := in[x]
-			if x < li-1 {
-				gradient := uint8(127)
-				c.Mix(in[x+1], gradient)
-			}
-			out[i] = c
-			//a := in[(i*li+li/2)/lo]
-			//b := in[(i*li+li/2)/lo]
-			//out[i] = (a + b) / 2
-		}
 	}
 }
 
 //
 
-const epsilon = 1e-7
+//const epsilon = 1e-7

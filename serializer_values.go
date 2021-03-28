@@ -68,16 +68,25 @@ func (s *SValue) UnmarshalJSON(b []byte) error {
 			s.Value = &Rand{}
 			return nil
 		}
+		if strings.HasSuffix(v, "%") {
+			var p Percent
+			if err = p.UnmarshalJSON(b); err == nil {
+				s.Value = &p
+			}
+			return err
+		}
+
+		// Operations:
 		if strings.HasPrefix(v, "+") {
 			var o OpAdd
-			if err := o.UnmarshalJSON(b); err == nil {
+			if err = o.UnmarshalJSON(b); err == nil {
 				s.Value = &o
 			}
 			return err
 		}
 		if strings.HasPrefix(v, "-") {
 			var o OpAdd
-			if err := o.UnmarshalJSON(b); err == nil {
+			if err = o.UnmarshalJSON(b); err == nil {
 				o.AddMS = -o.AddMS
 				s.Value = &o
 			}
@@ -85,15 +94,8 @@ func (s *SValue) UnmarshalJSON(b []byte) error {
 		}
 		if strings.HasPrefix(v, "%") {
 			var o OpMod
-			if err := o.UnmarshalJSON(b); err == nil {
+			if err = o.UnmarshalJSON(b); err == nil {
 				s.Value = &o
-			}
-			return err
-		}
-		if strings.HasSuffix(v, "%") {
-			var p Percent
-			if err := p.UnmarshalJSON(b); err == nil {
-				s.Value = &p
 			}
 			return err
 		}

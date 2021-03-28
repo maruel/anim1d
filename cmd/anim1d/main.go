@@ -17,12 +17,13 @@ import (
 	"time"
 
 	"github.com/maruel/anim1d"
-	"periph.io/x/extra/devices/screen"
-	"periph.io/x/periph/conn/display"
-	"periph.io/x/periph/conn/physic"
-	"periph.io/x/periph/conn/spi/spireg"
-	"periph.io/x/periph/devices/apa102"
-	"periph.io/x/periph/host"
+	"github.com/maruel/ansi256"
+	"periph.io/x/conn/v3/display"
+	"periph.io/x/conn/v3/physic"
+	"periph.io/x/conn/v3/spi/spireg"
+	"periph.io/x/devices/v3/apa102"
+	"periph.io/x/devices/v3/screen1d"
+	"periph.io/x/host/v3"
 )
 
 func mainImpl() error {
@@ -66,20 +67,20 @@ func mainImpl() error {
 			return err
 		}
 		if err := json.Unmarshal(c, &pat); err != nil {
-			return err
+			return fmt.Errorf("bad pattern: %w", err)
 		}
 	} else if *raw != "" {
 		if err := json.Unmarshal([]byte(*raw), &pat); err != nil {
-			return err
+			return fmt.Errorf("bad pattern: %w", err)
 		}
 	} else {
-		return errors.New("use one of -f or -r; try -r '\"0101ff\"'")
+		return errors.New("use one of -f or -r; try -r '\"#0101ff\"'")
 	}
 
 	var display displayWriter
 	if *fake {
 		// intensity and temperature are ignored.
-		display = screen.New(*numPixels)
+		display = screen1d.New(&screen1d.Opts{X: *numPixels, Palette: ansi256.Default})
 	} else {
 		if _, err := host.Init(); err != nil {
 			return err
@@ -93,7 +94,7 @@ func mainImpl() error {
 		}
 		defer s.Close()
 		if *hz != 0 {
-			if err := s.LimitSpeed(physic.Frequency(*hz) * physic.Hertz); err != nil {
+			if err = s.LimitSpeed(physic.Frequency(*hz) * physic.Hertz); err != nil {
 				return err
 			}
 		}
@@ -101,8 +102,7 @@ func mainImpl() error {
 		opts.NumPixels = *numPixels
 		opts.Intensity = uint8(*intensity)
 		opts.Temperature = uint16(*temperature)
-		display, err = apa102.New(s, &opts)
-		if err != nil {
+		if display, err = apa102.New(s, &opts); err != nil {
 			return err
 		}
 	}
@@ -134,7 +134,6 @@ func runLoop(display displayWriter, p anim1d.Pattern, fps int) error {
 		}
 		<-t.C
 	}
-	return nil
 }
 
 func main() {

@@ -603,6 +603,7 @@ func testFrame(t *testing.T, p Pattern, e expectation) {
 	}
 }
 
+/*
 func frameSimilar(lhs, rhs Frame) bool {
 	if len(lhs) != len(rhs) {
 		return false
@@ -618,3 +619,4 @@ func frameSimilar(lhs, rhs Frame) bool {
 	}
 	return true
 }
+*/

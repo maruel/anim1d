@@ -6,6 +6,7 @@ package anim1d
 
 import (
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -159,9 +160,9 @@ func TestInterpolation(t *testing.T) {
 	black := Color{}
 	input := Frame{red, green, blue, yellow, cyan, magenta, white}
 	data := []struct {
-		s        Interpolation
-		input    Frame
-		expected Frame
+		s     Interpolation
+		input Frame
+		want  Frame
 	}{
 		{
 			NearestSkip,
@@ -190,11 +191,14 @@ func TestInterpolation(t *testing.T) {
 		{Linear, input, Frame{Color{0x0, 0x80, 0x7F}, Color{0x80, 0xFF, 0x7F}, Color{0xFF, 0x7F, 0xFF}}},
 	}
 	for i, line := range data {
-		out := make(Frame, len(line.expected))
-		line.s.Scale(line.input, out)
-		if !reflect.DeepEqual(out, line.expected) {
-			t.Fatalf("%d: %v != %v", i, out, line.expected)
-		}
+		line := line
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			got := make(Frame, len(line.want))
+			line.s.Scale(line.input, got)
+			if !reflect.DeepEqual(got, line.want) {
+				t.Fatalf("got %v; want %v", got, line.want)
+			}
+		})
 	}
 }
 

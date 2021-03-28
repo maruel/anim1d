@@ -132,9 +132,9 @@ func (l *Lightning) Render(pixels Frame, timeMS uint32) {
 
 // Thunderstorm creates strobe-like lightning.
 type Thunderstorm struct {
-	AvgMS   int // Average between lightning strikes
-	current []Lightning
-	nextMS  uint32
+	AvgMS int // Average between lightning strikes
+	//current []Lightning
+	//nextMS  uint32
 }
 
 // Render implements Pattern.

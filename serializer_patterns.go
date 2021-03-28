@@ -77,7 +77,9 @@ func (s *SPattern) Render(pixels Frame, timeMS uint32) {
 func (s *SPattern) UnmarshalJSON(b []byte) error {
 	// Try to decode first as a string, then as a dict. Not super efficient but
 	// it works.
-	if p2, err := parsePatternString(b); err == nil {
+	if p2, err := parsePatternString(b); err != nil {
+		return err
+	} else if p2 != nil {
 		s.Pattern = p2
 		return nil
 	}
@@ -197,7 +199,7 @@ func LoadPNG(content []byte, frameDuration time.Duration, vertical bool) *Loop {
 func parsePatternString(b []byte) (Pattern, error) {
 	s, err := jsonUnmarshalString(b)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 	// Could try to do one after the other? It's kind of a hack at the moment.
 	if len(s) != 0 {
@@ -219,5 +221,5 @@ func parsePatternString(b []byte) (Pattern, error) {
 			return r, err
 		}
 	}
-	return nil, errors.New("unrecognized pattern string")
+	return nil, errors.New("unrecognized pattern string, should start with '#', 'L' or be a known constant")
 }

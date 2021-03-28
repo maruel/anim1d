@@ -82,25 +82,25 @@ func TestJSONValues(t *testing.T) {
 			t.Fatal(err)
 		}
 		if isConst(v) {
-			if _, err := strconv.ParseInt(string(b), 10, 32); err != nil {
+			if _, err = strconv.ParseInt(string(b), 10, 32); err != nil {
 				t.Fatalf("%v", err)
 			}
 		} else if isPercent(v) {
 			// Skip the %.
 			f := 0.
-			if _, err := fmt.Sscanf(string(b), "\"%g%%\"", &f); err != nil {
+			if _, err = fmt.Sscanf(string(b), "\"%g%%\"", &f); err != nil {
 				t.Fatalf("%v", err)
 			}
 		} else if isOpAdd(v) {
 			// Skip the +.
 			i := 0
-			if _, err := fmt.Sscanf(string(b), "\"+%d\"", &i); err != nil {
+			if _, err = fmt.Sscanf(string(b), "\"+%d\"", &i); err != nil {
 				t.Fatalf("%v", err)
 			}
 		} else if isOpMod(v) {
 			// Skip the %.
 			i := 0
-			if _, err := fmt.Sscanf(string(b), "\"%%%d\"", &i); err != nil {
+			if _, err = fmt.Sscanf(string(b), "\"%%%d\"", &i); err != nil {
 				t.Fatalf("%v", err)
 			}
 		} else if isRand(v) && string(b) == "\""+randKey+"\"" {
