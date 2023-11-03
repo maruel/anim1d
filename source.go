@@ -67,9 +67,11 @@ func (c *Color) Add(d Color) {
 // gradient 0 means pure 'c', gradient 255 means pure 'd'.
 //
 // It is the equivalent of:
-//   c.Dim(255-gradient)
-//   d.Dim(gradient)
-//   c.Add(d)
+//
+//	c.Dim(255-gradient)
+//	d.Dim(gradient)
+//	c.Add(d)
+//
 // except that this function doesn't affect d.
 func (c *Color) Mix(d Color, gradient uint8) {
 	grad := uint16(gradient)
@@ -167,9 +169,11 @@ func (f Frame) Add(r Frame) {
 // gradient 0 means pure 'f', gradient 255 means pure 'b'.
 //
 // It is the equivalent of:
-//   c.Dim(255-gradient)
-//   d.Dim(gradient)
-//   c.Add(d)
+//
+//	c.Dim(255-gradient)
+//	d.Dim(gradient)
+//	c.Add(d)
+//
 // except that this function doesn't affect d.
 func (f Frame) Mix(b Frame, gradient uint8) {
 	for i := range f {
