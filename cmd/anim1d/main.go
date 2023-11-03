@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -39,7 +38,7 @@ func mainImpl() error {
 	raw := flag.String("r", "", "inline serialized animation")
 	flag.Parse()
 	if !*verbose {
-		log.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
 	}
 	log.SetFlags(log.Lmicroseconds)
 	if flag.NArg() != 0 {
@@ -62,7 +61,7 @@ func mainImpl() error {
 		if *raw != "" {
 			return errors.New("can't use both -f and -r")
 		}
-		c, err := ioutil.ReadFile(*fileName)
+		c, err := os.ReadFile(*fileName)
 		if err != nil {
 			return err
 		}
